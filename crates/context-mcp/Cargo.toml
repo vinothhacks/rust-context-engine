@@ -1,0 +1,30 @@
+[package]
+name = "context-mcp"
+description = "Server-scoped stdio JSON-RPC 2.0 MCP server for Rust Context Engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+chrono.workspace = true
+context-capture.workspace = true
+context-core.workspace = true
+context-execution.workspace = true
+context-journal.workspace = true
+context-reducers.workspace = true
+context-search.workspace = true
+context-store.workspace = true
+dunce.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

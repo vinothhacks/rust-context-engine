@@ -1,0 +1,20 @@
+# RocketRide & local secrets
+.rocketride/
+.env
+.env*
+
+# Rust build & distribution outputs
+/target/
+target/
+/dist/
+dist/
+
+# Context Engine runtime state & SQLite databases
+.context-engine/
+*.db
+*.db*
+*.sqlite
+*.sqlite*
+
+# Gitignored upstream reference sandboxes (Phase 0 research only)
+research/refs/

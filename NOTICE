@@ -1,0 +1,42 @@
+Rust Context Engine
+Copyright 2026 Rust Context Engine Contributors
+
+This product is a self-hosted native Rust implementation of a local context
+capture, deterministic reduction, scoped lexical search, and exact recovery
+engine for coding agents.
+
+================================================================================
+Third-Party Research, Porting, and Architectural Attribution Notices
+================================================================================
+
+1. Headroom (https://github.com/chopratejas/headroom)
+   License: Apache License, Version 2.0
+   Notice: Selected pure deterministic content-classification and structured
+   JSON summarization concepts were studied and differentially verified using
+   Rust Anything MCP during development. Original work copyright Headroom
+   contributors, licensed under the Apache License, Version 2.0.
+
+2. RTK - Rust Token Killer (https://github.com/rtk-ai/rtk)
+   License: Apache License, Version 2.0
+   Notice: Deterministic CLI command-output reduction patterns and terminal
+   edge-case handling in Rust were studied during Phase 0 design. Original work
+   copyright RTK contributors, licensed under the Apache License, Version 2.0.
+
+3. Caveman (https://github.com/JuliusBrussee/caveman) and
+   Caveman Code (https://github.com/JuliusBrussee/caveman-code)
+   Licenses: Apache License, Version 2.0 (caveman) and MIT License (caveman-code)
+   Notice: Concise agent interaction guidance, non-destructive user-input
+   invariants, and host hook coexistence patterns were studied during Phase 0.
+   Original work copyright Julius Brussee and contributors.
+
+4. Development-Only Verification Tooling (Not Bundled or Linked at Runtime)
+   - Rust Anything (https://github.com/erkamyaman/rust-anything) — MIT License
+   - Reverse Engineer Anything / REA (https://github.com/morluto/rea) — MIT License
+
+5. Explicit Clean-Room Exclusion Notice
+   - Context Mode (https://github.com/mksglu/context-mode) is published under
+     the Elastic License 2.0 and was explicitly excluded from cloning, copying,
+     translation, or code porting. All SQLite WAL/FTS5 indexing, content-addressed
+     blob persistence, session journaling, and MCP tool contracts in this
+     repository were designed and implemented clean-room from first-principles
+     specifications.

@@ -1,0 +1,39 @@
+[package]
+name = "context-cli"
+description = "Unified CLI and stdio MCP entrypoint binary (context-engine)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "context-engine"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+context-capture.workspace = true
+context-core.workspace = true
+context-execution.workspace = true
+context-journal.workspace = true
+context-mcp.workspace = true
+context-reducers.workspace = true
+context-search.workspace = true
+context-store.workspace = true
+dunce.workspace = true
+ignore.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
