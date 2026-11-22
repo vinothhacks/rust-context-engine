@@ -1,0 +1,139 @@
+{
+  "date": "2026-11-22",
+  "phase": "phase0-mcp-ref-porting",
+  "pinned_references": [
+    {
+      "name": "headroom",
+      "url": "https://github.com/chopratejas/headroom.git",
+      "commit_sha": "ce0460cfa8598dc939243dbc7aec4b2d35f4e44a",
+      "verified_license": "Apache-2.0",
+      "local_sandbox": "research/refs/headroom"
+    },
+    {
+      "name": "rtk",
+      "url": "https://github.com/rtk-ai/rtk.git",
+      "commit_sha": "b8cb15167268b7a27519b84f79e53c4cb742bafe",
+      "verified_license": "Apache-2.0 (root crate src/, tests/, text/); BUSL-1.1 in engine/, proxy/, plugin/ (EXCLUDED)",
+      "local_sandbox": "research/refs/rtk"
+    },
+    {
+      "name": "caveman",
+      "url": "https://github.com/JuliusBrussee/caveman.git",
+      "commit_sha": "70f4f34e834893ea9af9f4fc6022266bd56d18b1",
+      "verified_license": "Apache-2.0 (with pre-3.0.0 MIT notice in LICENSE-MIT)",
+      "local_sandbox": "research/refs/caveman"
+    },
+    {
+      "name": "caveman-code",
+      "url": "https://github.com/JuliusBrussee/caveman-code.git",
+      "commit_sha": "6b20bc978102504c809965f93b4ebd99f0f67e97",
+      "verified_license": "MIT",
+      "local_sandbox": "research/refs/caveman-code"
+    }
+  ],
+  "blocked_references": [
+    {
+      "name": "mksglu/context-mode",
+      "license": "Elastic-2.0",
+      "status": "NEVER_CLONED_OR_INSPECTED"
+    }
+  ],
+  "rea_mcp_status": {
+    "invoked": false,
+    "reason": "Pre-flight probe returned 'REA could not start' requiring host MCP client restart and `rea doctor`; direct static source analysis performed via Read/Grep per Wave 1B instructions."
+  },
+  "rust_anything_verification": {
+    "tool_version": "rust-anything 3.1.0",
+    "unit": "headroom_port/classifier_json_reducer.py",
+    "crate_name": "classifier-json-reducer-rs",
+    "bridge_kind": "pyo3",
+    "record": {
+      "total_cases": 1180,
+      "errors": 0,
+      "semantic_traps": 138,
+      "tests_passed": true,
+      "per_function": {
+        "scan_json_spans": 226,
+        "normalize_concatenated_json": 232,
+        "carries_record_array": 227,
+        "classify_content": 245,
+        "reduce_json_structure": 250
+      }
+    },
+    "diff": {
+      "passed": 1180,
+      "total": 1180,
+      "failed": 0,
+      "mismatches": 0
+    },
+    "fuzz": {
+      "seed": 20261122,
+      "rounds": 2,
+      "passed": 2748,
+      "total": 2748,
+      "failed": 0,
+      "mismatches": 0
+    },
+    "bench": {
+      "overall_speedup_bench": 7.19169250291721,
+      "overall_speedup_report": 6.94250076631197,
+      "verdict": "Ship it: every function is faster in Rust, call included.",
+      "functions": [
+        {
+          "fn": "scan_json_spans",
+          "cases": 226,
+          "original_ns": 1887.15,
+          "rust_ns": 412.45,
+          "speedup": 4.58
+        },
+        {
+          "fn": "normalize_concatenated_json",
+          "cases": 232,
+          "original_ns": 681.77,
+          "rust_ns": 247.89,
+          "speedup": 2.75
+        },
+        {
+          "fn": "carries_record_array",
+          "cases": 227,
+          "original_ns": 5057.76,
+          "rust_ns": 328.67,
+          "speedup": 15.39
+        },
+        {
+          "fn": "classify_content",
+          "cases": 245,
+          "original_ns": 22761.05,
+          "rust_ns": 2463.46,
+          "speedup": 9.24
+        },
+        {
+          "fn": "reduce_json_structure",
+          "cases": 250,
+          "original_ns": 6137.26,
+          "rust_ns": 570.80,
+          "speedup": 10.75
+        }
+      ]
+    },
+    "gate": {
+      "passed": true,
+      "checks_passed": 12,
+      "checks_total": 12,
+      "checks": [
+        "fmt",
+        "clippy",
+        "cargo test",
+        "unsafe",
+        "lockfile",
+        "ported",
+        "size",
+        "error cases",
+        "panics",
+        "build",
+        "api",
+        "behavior"
+      ]
+    }
+  }
+}

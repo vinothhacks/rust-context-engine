@@ -1,0 +1,47 @@
+---
+description: Compact-first tool execution, bounded evidence recovery, and session continuity via Rust Context Engine MCP tools
+globs:
+alwaysApply: true
+---
+
+# Rust Context Engine Workflow (`context-engine`)
+
+When the `context-engine` MCP server is available in this workspace, follow these rules to minimize context window bloat while preserving 100% byte-exact evidence recovery:
+
+## 1. Prefer `context_run` for Noisy Commands
+
+- Use `context_run` instead of raw shell execution for high-volume or repetitive developer commands:
+  - **Build & Compiler:** `cargo check`, `cargo build`, `cargo clippy`, `rustc`, `tsc`, `go build`, `npm run build`
+  - **Test Suites:** `cargo test`, `pytest`, `jest`, `vitest`, `npm test`, `go test`
+  - **Git Inspection:** `git status`, `git diff`, `git log`, `git show`
+  - **Search & Logs:** `rg`, large structured JSON outputs, application/container logs
+- Always pass commands as an explicit `argv` array (for example `["cargo", "test", "--workspace"]`), never as shell-interpolated command strings (`sh -c` or `powershell -Command`).
+- Keep interactive prompts, long-lived background watchers/dev-servers, and destructive operations outside `context_run`.
+
+## 2. Inspect Compact `ArtifactEnvelope` Views First
+
+- Every `context_run` and `context_index` response returns an `ArtifactEnvelope` (`schema_version: 1`) containing:
+  - `artifact_id` (`a_<digest>`) scoped to `(project_scope, session_id)`
+  - `source.exit_code` and `capture` integrity metadata (`stdout_bytes`, `stderr_bytes`, `stdout_sha256`, `stderr_sha256`, `complete`, `originals_available`)
+  - `view.safe_excerpt`, `view.kind`, `view.omitted`, and the single-pass ledger `view.transformations`
+- Make your initial debugging decision from `view.safe_excerpt` and `source.exit_code` whenever the failing test identifier, compiler span (`file:line:col`), or diff summary is already sufficient.
+
+## 3. Recover Evidence via `context_search` and Bounded `context_get` — Never Re-Run
+
+- **Never re-execute** `cargo test`, builds, or other commands just to pipe output through `head`, `tail`, `grep`, or `Select-String`.
+- When `view.omitted` is `true` and you need deeper context from a captured run or indexed log:
+  1. Call `context_search` with focused keywords (error code, test name, panic message, symbol) to locate exact ranked excerpts in the sanitized SQLite FTS5 index.
+  2. Call `context_get` with `artifact_id`, `stream` (`"stdout"` or `"stderr"`), and a bounded `lines` range (e.g., `{"start": 1, "end": 80}`) or `bytes` range (e.g., `{"start": 0, "end": 4096}`).
+- If using the CLI directly instead of MCP, pass bounded `--lines <start:end>` or `--bytes <start:end>` to `context-engine get <artifact-id>`.
+- For large existing log or trace files inside the workspace, call `context_index` first, then query with `context_search` and `context_get`.
+
+## 4. Restore State with `context_resume` After Compaction
+
+- At the start of a resumed session or immediately after context window compaction/summarization, call `context_resume` before re-running test suites.
+- `context_resume` restores the latest deterministic checkpoint from the session journal, including active failure identifiers, recent `artifact_id` handles, and session progress.
+
+## 5. Single-Pass & Security Guardrails
+
+- Never re-index or re-compress outputs that already carry `view.transformations` entries (e.g., `strip_ansi@1`, `cargo_test@1`, `compiler_diag@1`) or `[context-engine:reduced` / `[headroom` / `[caveman` markers.
+- Never attempt to index `.env*`, `*.pem`, `*.key`, `.ssh`, `.aws`, or paths outside the bound workspace; `SecretGuard` and canonical path confinement fail closed by design.
+- Use `context_doctor` to diagnose configuration or storage permission issues and `context_stats` to inspect session byte/token reduction metrics.

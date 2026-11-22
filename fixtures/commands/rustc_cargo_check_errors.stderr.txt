@@ -1,0 +1,90 @@
+    Checking context-core v0.1.0 (D:\research 1\mcp\token reducer\crates\context-core)
+    Checking context-store v0.1.0 (D:\research 1\mcp\token reducer\crates\context-store)
+    Checking context-search v0.1.0 (D:\research 1\mcp\token reducer\crates\context-search)
+    Checking context-reducers v0.1.0 (D:\research 1\mcp\token reducer\crates\context-reducers)
+warning[unused_imports]: unused import: `std::collections::LinkedList`
+  --> crates/context-reducers/src/classifier.rs:4:5
+   |
+4  | use std::collections::LinkedList;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning[unused_variables]: unused variable: `raw_hint`
+  --> crates/context-reducers/src/classifier.rs:88:9
+   |
+88 |     let raw_hint = path_hint.unwrap_or("");
+   |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_raw_hint`
+
+warning[dead_code]: constant `LEGACY_CAP` is never used
+  --> crates/context-reducers/src/log_dedup.rs:19:7
+   |
+19 | const LEGACY_CAP: usize = 9999;
+   |       ^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/context-reducers/src/structured_json.rs:112:20
+    |
+108 | pub fn compute_item_cap(flag: bool) -> usize {
+    |                                        ----- expected `usize` because of return type
+...
+112 |     "three"
+    |     ^^^^^^^ expected `usize`, found `&'static str`
+
+error[E0425]: cannot find value `missing_budget` in this scope
+   --> crates/context-reducers/src/cargo_test.rs:204:36
+    |
+204 |     let cap = missing_budget.max_view_lines;
+    |               ^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `budget`
+
+error[E0599]: no method named `nonexistent_ helper` found for reference `&SecretGuard` in the current scope
+   --> crates/context-reducers/src/lib.rs:412:22
+    |
+412 |     secret_guard.nonexistent_helper(raw_text);
+    |                  ^^^^^^^^^^^^^^^^^^ method not found in `&SecretGuard`
+
+warning: `context-reducers` (lib) generated 3 warnings
+error: could not compile `context-reducers` (lib) due to 3 previous errors; 3 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+warning[unused_imports]: unused import: `std::collections::LinkedList`
+  --> crates/context-reducers/src/classifier.rs:4:5
+   |
+4  | use std::collections::LinkedList;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[unused_variables]: unused variable: `raw_hint`
+  --> crates/context-reducers/src/classifier.rs:88:9
+   |
+88 |     let raw_hint = path_hint.unwrap_or("");
+   |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_raw_hint`
+
+warning[dead_code]: constant `LEGACY_CAP` is never used
+  --> crates/context-reducers/src/log_dedup.rs:19:7
+   |
+19 | const LEGACY_CAP: usize = 9999;
+   |       ^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/context-reducers/src/structured_json.rs:112:20
+    |
+108 | pub fn compute_item_cap(flag: bool) -> usize {
+    |                                        ----- expected `usize` because of return type
+...
+112 |     "three"
+    |     ^^^^^^^ expected `usize`, found `&'static str`
+
+error[E0425]: cannot find value `missing_budget` in this scope
+   --> crates/context-reducers/src/cargo_test.rs:204:36
+    |
+204 |     let cap = missing_budget.max_view_lines;
+    |               ^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `budget`
+
+error[E0599]: no method named `nonexistent_ helper` found for reference `&SecretGuard` in the current scope
+   --> crates/context-reducers/src/lib.rs:412:22
+    |
+412 |     secret_guard.nonexistent_helper(raw_text);
+    |                  ^^^^^^^^^^^^^^^^^^ method not found in `&SecretGuard`
+
+warning: `context-reducers` (lib test) generated 3 warnings (3 duplicates)
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `context-reducers` (lib test) due to 3 previous errors; 3 warnings emitted

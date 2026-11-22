@@ -1,0 +1,26 @@
+On branch feat/phase3-reducers
+Your branch is ahead of 'origin/main' by 3 commits.
+  (use "git push" to publish your local commits)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   crates/context-mcp/src/router.rs
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	new file:   crates/context-reducers/src/ansi.rs
+	new file:   crates/context-reducers/src/classifier.rs
+	modified:   crates/context-reducers/src/lib.rs
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   crates/context-reducers/src/cargo_test.rs
+	modified:   crates/context-reducers/src/log_dedup.rs
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	fixtures/commands/cargo_test_failing_multiline.stdout.txt
+	fixtures/commands/pytest_failing_suite.stdout.txt
+	fixtures/documents/large_api_records.json
+	fixtures/documents/noisy_service.log

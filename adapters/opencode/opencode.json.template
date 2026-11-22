@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "./.opencode/plugin/context-engine-plugin.mjs"
+  ],
+  "mcp": {
+    "context-engine": {
+      "type": "local",
+      "command": [
+        "{{BINARY_PATH}}",
+        "mcp",
+        "--workspace",
+        "{{WORKSPACE_PATH}}"
+      ],
+      "enabled": true
+    }
+  },
+  "permission": {
+    "context-engine_context_run": "allow",
+    "context-engine_context_index": "allow",
+    "context-engine_context_search": "allow",
+    "context-engine_context_get": "allow",
+    "context-engine_context_resume": "allow",
+    "context-engine_context_stats": "allow",
+    "context-engine_context_doctor": "allow"
+  }
+}

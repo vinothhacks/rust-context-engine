@@ -1,0 +1,48 @@
+2026-11-22T12:00:01.104Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440001 peer=10.24.0.11:5432 elapsed=14ms
+2026-11-22T12:00:02.108Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440002 peer=10.24.0.12:5432 elapsed=15ms
+2026-11-22T12:00:03.112Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440003 peer=10.24.0.13:5432 elapsed=16ms
+2026-11-22T12:00:04.116Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440004 peer=10.24.0.14:5432 elapsed=17ms
+2026-11-22T12:00:05.120Z DEBUG [cache] Zstd frame hit block=0x00010005 ratio=78%
+2026-11-22T12:00:06.124Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440005 peer=10.24.0.15:5432 elapsed=18ms
+2026-11-22T12:00:07.128Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440006 peer=10.24.0.16:5432 elapsed=12ms
+2026-11-22T12:00:08.132Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440007 peer=10.24.0.17:5432 elapsed=19ms
+2026-11-22T12:00:09.136Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440008 peer=10.24.0.18:5432 elapsed=14ms
+2026-11-22T12:00:10.140Z DEBUG [cache] Zstd frame hit block=0x0001000a ratio=79%
+2026-11-22T12:00:11.144Z WARN [pool] SQLite write lock contention retry=1 wait_ms=52
+2026-11-22T12:00:12.148Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440009 peer=10.24.0.19:5432 elapsed=15ms
+2026-11-22T12:00:13.152Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440010 peer=10.24.0.20:5432 elapsed=16ms
+2026-11-22T12:00:14.156Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440011 peer=10.24.0.21:5432 elapsed=17ms
+2026-11-22T12:00:15.160Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440012 peer=10.24.0.22:5432 elapsed=13ms
+2026-11-22T12:00:16.164Z DEBUG [cache] Zstd frame hit block=0x00010010 ratio=81%
+2026-11-22T12:00:17.500Z ERROR [store] Code E_BLOB_CHECKSUM: Zstandard frame CRC mismatch on blob shard_02
+2026-11-22T12:00:18.168Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440013 peer=10.24.0.23:5432 elapsed=14ms
+2026-11-22T12:00:19.172Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440014 peer=10.24.0.24:5432 elapsed=15ms
+2026-11-22T12:00:20.176Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440015 peer=10.24.0.25:5432 elapsed=16ms
+2026-11-22T12:00:21.180Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440016 peer=10.24.0.26:5432 elapsed=17ms
+2026-11-22T12:00:22.184Z WARN [pool] SQLite write lock contention retry=2 wait_ms=65
+2026-11-22T12:00:23.188Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440017 peer=10.24.0.27:5432 elapsed=14ms
+2026-11-22T12:00:24.192Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440018 peer=10.24.0.28:5432 elapsed=15ms
+2026-11-22T12:00:25.196Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440019 peer=10.24.0.29:5432 elapsed=16ms
+2026-11-22T12:00:26.200Z DEBUG [cache] Zstd frame hit block=0x0001001a ratio=80%
+2026-11-22T12:00:27.500Z ERROR [store] Code E_BLOB_CHECKSUM: Zstandard frame CRC mismatch on blob shard_02
+2026-11-22T12:00:28.204Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440020 peer=10.24.0.30:5432 elapsed=12ms
+2026-11-22T12:00:29.208Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440021 peer=10.24.0.31:5432 elapsed=14ms
+2026-11-22T12:00:30.212Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440022 peer=10.24.0.32:5432 elapsed=15ms
+2026-11-22T12:00:31.216Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440023 peer=10.24.0.33:5432 elapsed=16ms
+2026-11-22T12:00:32.777Z ERROR [auth] Code E_SCOPE_DENIED: Rejected cross-workspace token probe
+2026-11-22T12:00:33.220Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440024 peer=10.24.0.34:5432 elapsed=17ms
+2026-11-22T12:00:34.224Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440025 peer=10.24.0.35:5432 elapsed=14ms
+2026-11-22T12:00:35.228Z WARN [pool] SQLite write lock contention retry=3 wait_ms=80
+2026-11-22T12:00:36.232Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440026 peer=10.24.0.36:5432 elapsed=15ms
+2026-11-22T12:00:37.236Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440027 peer=10.24.0.37:5432 elapsed=16ms
+2026-11-22T12:00:38.240Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440028 peer=10.24.0.38:5432 elapsed=13ms
+2026-11-22T12:00:39.244Z DEBUG [cache] Zstd frame hit block=0x00010025 ratio=82%
+2026-11-22T12:00:40.248Z INFO [worker-0] Batch check completed: 0 errors, 0 failed in health probe
+2026-11-22T12:00:41.252Z INFO [worker-1] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440029 peer=10.24.0.39:5432 elapsed=14ms
+2026-11-22T12:00:42.256Z INFO [worker-2] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440030 peer=10.24.0.40:5432 elapsed=15ms
+2026-11-22T12:00:43.260Z INFO [worker-3] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440031 peer=10.24.0.41:5432 elapsed=16ms
+2026-11-22T12:00:44.990Z FATAL [supervisor] Unrecoverable WAL journal corruption on primary volume
+  at context_store::wal::checkpoint (crates/context-store/src/wal.rs:188:9)
+  at context_store::Store::commit_atomic (crates/context-store/src/lib.rs:94:5)
+Caused by: I/O error: disk quota exceeded (os error 112)
+2026-11-22T12:00:45.500Z INFO [worker-0] Completed artifact indexing req_id=550e8400-e29b-41d4-a716-446655440032 peer=10.24.0.42:5432 elapsed=14ms

@@ -1,0 +1,103 @@
+
+running 18 tests
+test budget::tests::default_budget_valid ... ok
+test budget::tests::utf8_boundary_safe ... ok
+test scope::tests::binds_workspace_root ... ok
+test scope::tests::normalizes_windows_drive_case ... ok
+test scope::tests::rejects_forged_scope_override ... FAILED
+test secrets::tests::redacts_github_tokens ... ok
+test secrets::tests::redacts_pem_blocks ... ok
+test secrets::tests::preserves_sha256_digests ... ok
+test ledger::tests::single_pass_guard ... ok
+test ledger::tests::banner_round_trip ... ok
+test policy::tests::allows_cargo_and_git ... ok
+test policy::tests::blocks_shell_interpreters ... ok
+test policy::tests::blocks_dotenv_files ... ok
+test envelope::tests::line_range_validation ... ok
+test envelope::tests::byte_range_validation ... ok
+test envelope::tests::schema_v1_round_trip ... FAILED
+test envelope::tests::experimental_fuzz_stub ... ignored
+test store::tests::slow_zstd_torture ... ignored
+
+failures:
+
+---- scope::tests::rejects_forged_scope_override stdout ----
+[trace] evaluating request project_scope="ws_ffffffffffffffffffffffffffffffff"
+[trace] bound server scope="ws_0123456789abcdef0123456789abcdef"
+thread 'scope::tests::rejects_forged_scope_override' panicked at crates/context-core/src/scope.rs:246:13:
+assertion `left == right` failed: forged client scope must return SCOPE_VIOLATION
+  left: ScopeResolution {
+    accepted: true,
+    effective_scope: "ws_ffffffffffffffffffffffffffffffff",
+    session_id: "default",
+}
+ right: ScopeResolution {
+    accepted: false,
+    effective_scope: "ws_0123456789abcdef0123456789abcdef",
+    session_id: "default",
+}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- envelope::tests::schema_v1_round_trip stdout ----
+thread 'envelope::tests::schema_v1_round_trip' panicked at crates/context-core/src/envelope.rs:348:9:
+assertion `left == right` failed: recovery artifact_id mismatch after deserialization
+  left: "a_0000000000000000000000000000000000000000000000000000000000000000"
+ right: "a_9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+stack backtrace:
+   0: std::panicking::begin_panic_handler
+   1: core::panicking::assert_failed_inner
+   2: context_core::envelope::tests::schema_v1_round_trip
+             at ./crates/context-core/src/envelope.rs:348:9
+   3: test::__rust_begin_short_backtrace
+
+
+failures:
+    envelope::tests::schema_v1_round_trip
+    scope::tests::rejects_forged_scope_override
+
+test result: FAILED. 14 passed; 2 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+
+running 6 tests
+test auth_session_isolation ... ok
+test cross_workspace_artifact_probe_denied ... FAILED
+test concurrent_reader_recovery ... ok
+test quota_enforcement ... ok
+test atomic_blob_commit ... ok
+test malformed_range_rejected ... ok
+
+failures:
+
+---- cross_workspace_artifact_probe_denied stdout ----
+thread 'cross_workspace_artifact_probe_denied' panicked at crates/context-core/tests/integration_auth.rs:89:5:
+expected Err(ScopeViolation), got Ok(BlobSlice { len: 512 })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    cross_workspace_artifact_probe_denied
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Doc-tests context_core
+
+running 4 tests
+test crates/context-core/src/budget.rs - budget::ReductionBudget::bound_view_excerpt (line 105) ... ok
+test crates/context-core/src/scope.rs - scope::BoundScope::bind (line 208) ... FAILED
+test crates/context-core/src/ledger.rs - ledger::TransformationLedger (line 36) ... ok
+test crates/context-core/src/secrets.rs - secrets::SecretGuard::scan_str (line 341) ... ok
+
+failures:
+
+---- crates/context-core/src/scope.rs - scope::BoundScope::bind (line 208) stdout ----
+Test executable failed (exit status: 101).
+
+stderr:
+thread 'main' panicked at crates/context-core/src/scope.rs:214:18:
+called `Result::unwrap()` on an `Err` value: InvalidWorkspacePath { path: "/nonexistent", reason: "The system cannot find the file specified." }
+
+
+failures:
+    crates/context-core/src/scope.rs - scope::BoundScope::bind (line 208)
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s

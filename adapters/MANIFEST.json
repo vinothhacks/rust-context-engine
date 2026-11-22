@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "engine": "context-engine",
+  "contract_id": "context-engine-adapters-v1",
+  "description": "Authoritative manifest of opt-in, project-scoped agent integration templates and static assets consumed by `context-engine setup` (crates/context-cli) and dist packaging.",
+  "isolation_policy": {
+    "opt_in_only": true,
+    "project_scoped_only": true,
+    "forbid_global_config_writes": true,
+    "forbidden_global_paths": [
+      "~/.cursor",
+      "~/.claude",
+      "~/.codex",
+      "~/.config/opencode",
+      "%USERPROFILE%\\.cursor",
+      "%USERPROFILE%\\.claude",
+      "%USERPROFILE%\\.codex"
+    ],
+    "single_pass_ledger_field": "view.transformations",
+    "text_reduction_marker": "[context-engine:reduced",
+    "coexisting_optimizers": [
+      "caveman",
+      "headroom"
+    ]
+  },
+  "placeholder_schema": {
+    "syntax": "{{PLACEHOLDER_NAME}}",
+    "strict_allowlist": [
+      "{{BINARY_PATH}}",
+      "{{WORKSPACE_PATH}}"
+    ],
+    "placeholders": {
+      "{{BINARY_PATH}}": {
+        "token": "{{BINARY_PATH}}",
+        "required": true,
+        "value_kind": "executable_path",
+        "normalization": [
+          "Resolve canonical path via dunce::canonicalize when pointing to a local binary so Windows verbatim '\\\\?\\' prefixes are stripped.",
+          "Do not include surrounding quotes in the replacement value; templates already place {{BINARY_PATH}} inside quoted JSON/TOML string literals."
+        ],
+        "escaping_by_format": {
+          "json": "Escape '\\' as '\\\\' and '\"' as '\\\"' (standard JSON string content escaping without outer quotes), or normalize path separators to '/' on Windows when embedded inside nested hook command strings.",
+          "toml": "Escape '\\' as '\\\\' and '\"' as '\\\"' (TOML basic string escaping without outer quotes), or normalize Windows path separators to '/'."
+        }
+      },
+      "{{WORKSPACE_PATH}}": {
+        "token": "{{WORKSPACE_PATH}}",
+        "required": true,
+        "value_kind": "canonical_directory_path",
+        "normalization": [
+          "Canonicalize target project root via dunce::canonicalize (stripping Windows '\\\\?\\' verbatim prefixes).",
+          "Strip any trailing '/' or '\\' path separator (except bare filesystem root) so '{{WORKSPACE_PATH}}/.cursor/...' and Windows CommandLineToArgvW quoted arguments never produce escaped trailing quotes.",
+          "Refuse substitution if the resolved directory matches or resides inside forbidden global user configuration directories."
+        ],
+        "escaping_by_format": {
+          "json": "Escape '\\' as '\\\\' and '\"' as '\\\"' (or normalize separators to '/' so nested quoted hook command strings in hooks.json.template and settings.hooks.json.template work identically across Windows and POSIX).",
+          "toml": "Escape '\\' as '\\\\' and '\"' as '\\\"' (or normalize separators to '/')."
+        }
+      }
+    },
+    "rendering_invariants": [
+      "Only files with `kind == \"template\"` (ending in `.template`) undergo placeholder substitution.",
+      "Every `.template` file in `adapters/` uses both `{{BINARY_PATH}}` and `{{WORKSPACE_PATH}}` and zero other `{{...}}` tokens.",
+      "Files with `kind == \"static\"` must be copied byte-for-byte without placeholder substitution (runtime scripts/rules/skills/wrappers contain zero `{{...}}` tokens; `README.md` files may document placeholder names in prose).",
+      "After rendering any `.template` file, `context-engine setup` must assert that neither `{{BINARY_PATH}}` nor `{{WORKSPACE_PATH}}` (nor any unresolved `{{` token) remains, and must parse-validate JSON/TOML syntax before atomic file replacement."
+    ]
+  },
+  "clients": {
+    "cursor": {
+      "client_id": "cursor",
+      "display_name": "Cursor IDE",
+      "adapter_dir": "cursor",
+      "dist_dir": "dist/integrations/cursor",
+      "files": [
+        {
+          "source_path": "cursor/mcp.json.template",
+          "default_target_path": ".cursor/mcp.json",
+          "kind": "template",
+          "format": "json",
+          "category": "mcp_config",
+          "optional": false,
+          "merge_strategy": "merge_json_mcp_servers",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "cursor/rules/context-engine.mdc",
+          "default_target_path": ".cursor/rules/context-engine.mdc",
+          "kind": "static",
+          "format": "mdc",
+          "category": "agent_rule",
+          "optional": false,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "cursor/hooks/hooks.json.template",
+          "default_target_path": ".cursor/hooks.json",
+          "kind": "template",
+          "format": "json",
+          "category": "hook_config",
+          "optional": true,
+          "merge_strategy": "merge_cursor_hooks",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "cursor/hooks/post-command-capture.ps1",
+          "default_target_path": ".cursor/hooks/post-command-capture.ps1",
+          "kind": "static",
+          "format": "ps1",
+          "category": "hook_script",
+          "optional": true,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "cursor/hooks/post-command-capture.sh",
+          "default_target_path": ".cursor/hooks/post-command-capture.sh",
+          "kind": "static",
+          "format": "sh",
+          "category": "hook_script",
+          "executable": true,
+          "optional": true,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "cursor/README.md",
+          "default_target_path": ".context-engine/docs/cursor-README.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "readme",
+          "optional": true,
+          "merge_strategy": "reference_only",
+          "placeholders": []
+        }
+      ]
+    },
+    "claude-code": {
+      "client_id": "claude-code",
+      "display_name": "Claude Code",
+      "adapter_dir": "claude-code",
+      "dist_dir": "dist/integrations/claude-code",
+      "files": [
+        {
+          "source_path": "claude-code/.mcp.json.template",
+          "default_target_path": ".mcp.json",
+          "kind": "template",
+          "format": "json",
+          "category": "mcp_config",
+          "optional": false,
+          "merge_strategy": "merge_json_mcp_servers",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "claude-code/SKILL.md",
+          "default_target_path": ".claude/skills/context-engine/SKILL.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "skill",
+          "optional": false,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "claude-code/CLAUDE.snippet.md",
+          "default_target_path": ".claude/context-engine.CLAUDE.snippet.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "doc_snippet",
+          "optional": true,
+          "merge_strategy": "manual_append_to_CLAUDE_md",
+          "placeholders": []
+        },
+        {
+          "source_path": "claude-code/hooks/settings.hooks.json.template",
+          "default_target_path": ".claude/settings.local.json",
+          "kind": "template",
+          "format": "json",
+          "category": "hook_config",
+          "optional": true,
+          "merge_strategy": "merge_claude_hooks",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "claude-code/hooks/post-tool-reduce.mjs",
+          "default_target_path": ".claude/hooks/post-tool-reduce.mjs",
+          "kind": "static",
+          "format": "mjs",
+          "category": "hook_script",
+          "executable": true,
+          "optional": true,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "claude-code/README.md",
+          "default_target_path": ".context-engine/docs/claude-code-README.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "readme",
+          "optional": true,
+          "merge_strategy": "reference_only",
+          "placeholders": []
+        }
+      ]
+    },
+    "opencode": {
+      "client_id": "opencode",
+      "display_name": "OpenCode",
+      "adapter_dir": "opencode",
+      "dist_dir": "dist/integrations/opencode",
+      "files": [
+        {
+          "source_path": "opencode/opencode.json.template",
+          "default_target_path": "opencode.json",
+          "kind": "template",
+          "format": "json",
+          "category": "mcp_config",
+          "optional": false,
+          "merge_strategy": "merge_opencode_config",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "opencode/plugin/context-engine-plugin.mjs",
+          "default_target_path": ".opencode/plugin/context-engine-plugin.mjs",
+          "kind": "static",
+          "format": "mjs",
+          "category": "plugin",
+          "optional": true,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "opencode/README.md",
+          "default_target_path": ".context-engine/docs/opencode-README.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "readme",
+          "optional": true,
+          "merge_strategy": "reference_only",
+          "placeholders": []
+        }
+      ]
+    },
+    "codex": {
+      "client_id": "codex",
+      "display_name": "OpenAI Codex CLI",
+      "adapter_dir": "codex",
+      "dist_dir": "dist/integrations/codex",
+      "files": [
+        {
+          "source_path": "codex/config.toml.template",
+          "default_target_path": ".codex/config.toml",
+          "kind": "template",
+          "format": "toml",
+          "category": "mcp_config",
+          "optional": false,
+          "merge_strategy": "merge_toml_mcp_servers",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "codex/AGENTS.snippet.md",
+          "default_target_path": ".codex/context-engine.AGENTS.snippet.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "doc_snippet",
+          "optional": true,
+          "merge_strategy": "manual_append_to_AGENTS_md",
+          "placeholders": []
+        },
+        {
+          "source_path": "codex/README.md",
+          "default_target_path": ".context-engine/docs/codex-README.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "readme",
+          "optional": true,
+          "merge_strategy": "reference_only",
+          "placeholders": []
+        }
+      ]
+    },
+    "generic-mcp": {
+      "client_id": "generic-mcp",
+      "aliases": [
+        "generic",
+        "windsurf",
+        "cline",
+        "continue",
+        "zed",
+        "roo-code"
+      ],
+      "display_name": "Generic MCP Stdio & Shell CLI Wrappers",
+      "adapter_dir": "generic-mcp",
+      "dist_dir": "dist/integrations/generic",
+      "files": [
+        {
+          "source_path": "generic-mcp/mcp-stdio.json.template",
+          "default_target_path": ".mcp.stdio.json",
+          "kind": "template",
+          "format": "json",
+          "category": "mcp_config",
+          "optional": false,
+          "merge_strategy": "merge_json_mcp_servers",
+          "placeholders": [
+            "{{BINARY_PATH}}",
+            "{{WORKSPACE_PATH}}"
+          ]
+        },
+        {
+          "source_path": "generic-mcp/wrappers/ce-run.ps1",
+          "default_target_path": ".context-engine/bin/ce-run.ps1",
+          "kind": "static",
+          "format": "ps1",
+          "category": "cli_wrapper",
+          "optional": false,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "generic-mcp/wrappers/ce-run.sh",
+          "default_target_path": ".context-engine/bin/ce-run.sh",
+          "kind": "static",
+          "format": "sh",
+          "category": "cli_wrapper",
+          "executable": true,
+          "optional": false,
+          "merge_strategy": "write_atomic",
+          "placeholders": []
+        },
+        {
+          "source_path": "generic-mcp/README.md",
+          "default_target_path": ".context-engine/docs/generic-mcp-README.md",
+          "kind": "static",
+          "format": "markdown",
+          "category": "readme",
+          "optional": true,
+          "merge_strategy": "reference_only",
+          "placeholders": []
+        }
+      ]
+    }
+  }
+}

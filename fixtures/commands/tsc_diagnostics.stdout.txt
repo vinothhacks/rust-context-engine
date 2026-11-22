@@ -1,0 +1,9 @@
+adapters/opencode/src/plugin.ts(29,11): error TS2322: Type 'number' is not assignable to type 'string'.
+adapters/opencode/src/plugin.ts(64,25): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'BoundScope'.
+adapters/opencode/src/hooks.ts:18:14 - error TS7006: Parameter 'eventPayload' implicitly has an 'any' type.
+
+18 export async function onPostToolUse(eventPayload) {
+                ~~~~~~~~~~~~
+
+adapters/opencode/src/plugin.ts(29,11): error TS2322: Type 'number' is not assignable to type 'string'.
+Found 4 errors in 2 files.

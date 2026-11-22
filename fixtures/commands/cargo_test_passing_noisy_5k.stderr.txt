@@ -1,0 +1,5 @@
+   Compiling context-core v0.1.0 (D:\research 1\mcp\token reducer\crates\context-core)
+   Compiling context-reducers v0.1.0 (D:\research 1\mcp\token reducer\crates\context-reducers)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.12s
+     Running unittests src\lib.rs (target\debug\deps\context_reducers-55aa66bb.exe)
+   Doc-tests context_reducers

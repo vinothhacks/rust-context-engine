@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterShellExecution": [
+      {
+        "command": "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{{WORKSPACE_PATH}}/.cursor/hooks/post-command-capture.ps1\" -BinaryPath \"{{BINARY_PATH}}\" -WorkspacePath \"{{WORKSPACE_PATH}}\""
+      }
+    ]
+  }
+}

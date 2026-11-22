@@ -1,0 +1,39 @@
+ PASS  src/ansi.test.ts (18 tests) 24ms
+ PASS  src/ledger.test.ts (12 tests) 15ms
+ FAIL  src/classifier.test.ts
+  ● Console
+
+    console.debug
+      scanning candidate payload len=8192
+
+  ● Classifier › Windows paths › parses ripgrep drive-letter hits
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: {"line": 42, "path": "D:\\repo\\src\\main.rs"}
+    Received: {"line": null, "path": "D"}
+
+      56 |   it('parses ripgrep drive-letter hits', () => {
+      57 |     const parsed = parseSearchLine('D:\\repo\\src\\main.rs:42:fn main() {}');
+    > 58 |     expect(parsed).toEqual({ path: 'D:\\repo\\src\\main.rs', line: 42 });
+         |                    ^
+      59 |   });
+
+      at Object.<anonymous> (src/classifier.test.ts:58:20)
+      at Promise.then.completed (node_modules/jest-circus/build/utils.js:298:28)
+
+  ● Classifier › JSON reducer › retains embedded error items in bulk array
+
+    expect(received).toContain(expected)
+
+    Expected substring: "\"boom\""
+    Received string:    "Array(len=200) [...]"
+
+      at Object.<anonymous> (src/classifier.test.ts:104:22)
+      at Promise.then.completed (node_modules/jest-circus/build/utils.js:298:28)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       2 failed, 1 skipped, 30 passed, 33 total
+Snapshots:   0 total
+Time:        1.824 s
+Ran all test suites.

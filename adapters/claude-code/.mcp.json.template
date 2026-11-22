@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "context-engine": {
+      "type": "stdio",
+      "command": "{{BINARY_PATH}}",
+      "args": ["mcp", "--workspace", "{{WORKSPACE_PATH}}"]
+    }
+  }
+}

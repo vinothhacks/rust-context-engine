@@ -1,0 +1,20 @@
+D:\research 1\mcp\token reducer\crates\context-core\src\secrets.rs:341:    pub fn scan_str(&self, input: &str) -> SecretScanReport {
+D:\research 1\mcp\token reducer\crates\context-core\src\secrets.rs-342-        if input.is_empty() {
+--
+D:\research 1\mcp\token reducer\crates\context-core\src\secrets.rs:495:    pub fn redact_str(&self, input: &str) -> String {
+D:\research 1\mcp\token reducer\crates\context-core\src\secrets.rs:496:        self.scan_str(input).sanitized_text
+D:\research 1\mcp\token reducer\crates\context-core\src\secrets.rs:506:    pub fn protect_bytes(&self, raw: &[u8]) -> Result<StreamProtectionOutcome> {
+D:\research 1\mcp\token reducer\crates\context-core\src\secrets.rs:509:        let report = self.scan_str(&lossy);
+--
+crates/context-core/src/pre-commit-guard.yaml:14:secret_scan_mode: redact_before_index
+crates/context-core/src/pre-commit-guard.yaml-15-entropy_min_length: 28
+crates/context-core/src/pre-commit-guard.yaml:29:redact_placeholder_prefix: "[REDACTED:"
+--
+crates/context-core/src/ledger.rs:10:pub const TRANSFORM_SECRET_REDACT_V1: &str = "secret_redact@1";
+crates/context-core/src/lib.rs:391:        let report = guard.scan_str(&combined);
+crates/context-core/src/lib.rs:435:        let second_pass = guard.scan_str(&report.sanitized_text);
+crates/context-core/src/lib.rs:452:        let report = guard.scan_str(clean_dev_output);
+crates/context-core/src/lib.rs:526:        let r1 = guard.scan_str(openssh);
+crates/context-core/src/lib.rs:532:        let r2 = guard.scan_str(truncated_pem);
+crates/context-core/src/lib.rs:541:        let r3 = guard.scan_str(uris);
+crates/context-core/src/lib.rs:677:            let report = guard.scan_str(&arbitrary_text);

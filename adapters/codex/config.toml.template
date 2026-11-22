@@ -1,0 +1,9 @@
+# Rust Context Engine — Opt-in project-scoped MCP server configuration for Codex CLI
+# Render via `context-engine setup --client codex` or copy into `<project-root>/.codex/config.toml`
+
+[mcp_servers.context_engine]
+command = "{{BINARY_PATH}}"
+args = ["mcp", "--workspace", "{{WORKSPACE_PATH}}"]
+startup_timeout_sec = 10
+tool_timeout_sec = 120
+enabled = true

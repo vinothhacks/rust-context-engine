@@ -1,0 +1,128 @@
+{
+  "_provenance": {
+    "spdx_license": "Apache-2.0",
+    "copyright": "Copyright 2025 Headroom Contributors",
+    "upstream_repository": "https://github.com/chopratejas/headroom.git",
+    "upstream_commit": "ce0460cfa8598dc939243dbc7aec4b2d35f4e44a",
+    "upstream_files": [
+      "headroom/transforms/content_detector.py",
+      "headroom/transforms/lossless_compaction.py",
+      "headroom/transforms/recursive_json.py"
+    ],
+    "verified_by": "user-rust-anything MCP v3.1.0"
+  },
+  "schema": "rust-anything/bridge@1",
+  "root": "D:\\research 1\\mcp\\token reducer\\research\\refs\\port-unit",
+  "unit": "headroom_port/classifier_json_reducer.py",
+  "language": "python",
+  "kind": "pyo3",
+  "crate_name": "classifier-json-reducer-rs",
+  "exports": [
+    {
+      "name": "scan_json_spans",
+      "file": "headroom_port/classifier_json_reducer.py",
+      "line": 250,
+      "params": [
+        {
+          "name": "text",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "int[][]",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "normalize_concatenated_json",
+      "file": "headroom_port/classifier_json_reducer.py",
+      "line": 297,
+      "params": [
+        {
+          "name": "content",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "carries_record_array",
+      "file": "headroom_port/classifier_json_reducer.py",
+      "line": 330,
+      "params": [
+        {
+          "name": "span",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "boolean",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "classify_content",
+      "file": "headroom_port/classifier_json_reducer.py",
+      "line": 511,
+      "params": [
+        {
+          "name": "content",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    },
+    {
+      "name": "reduce_json_structure",
+      "file": "headroom_port/classifier_json_reducer.py",
+      "line": 741,
+      "params": [
+        {
+          "name": "content",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        },
+        {
+          "name": "max_depth",
+          "ts_type": "int | null",
+          "optional": true,
+          "rest": false,
+          "default": "4"
+        },
+        {
+          "name": "max_items",
+          "ts_type": "int | null",
+          "optional": true,
+          "rest": false,
+          "default": "3"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

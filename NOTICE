@@ -11,10 +11,18 @@ Third-Party Research, Porting, and Architectural Attribution Notices
 
 1. Headroom (https://github.com/chopratejas/headroom)
    License: Apache License, Version 2.0
-   Notice: Selected pure deterministic content-classification and structured
-   JSON summarization concepts were studied and differentially verified using
-   Rust Anything MCP during development. Original work copyright Headroom
-   contributors, licensed under the Apache License, Version 2.0.
+   Upstream Revision: ce0460cfa8598dc939243dbc7aec4b2d35f4e44a
+   Attributed Files:
+     - crates/context-reducers/src/ported.rs
+     - research/evidence/ (port.rs, REPORT.md, card.svg, rust-anything.json,
+       verification-metrics.json)
+   Notice: Pure deterministic content-classification and structured JSON
+   reduction logic adapted from headroom/transforms/content_detector.py,
+   headroom/transforms/lossless_compaction.py, and
+   headroom/transforms/recursive_json.py was ported to Rust and differentially
+   verified (1180 recorded cases + 2748 fuzz cases, 0 mismatches) using Rust
+   Anything MCP during development. Original work Copyright 2025 Headroom
+   Contributors, licensed under the Apache License, Version 2.0.
 
 2. RTK - Rust Token Killer (https://github.com/rtk-ai/rtk)
    License: Apache License, Version 2.0

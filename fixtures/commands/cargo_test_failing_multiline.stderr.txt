@@ -1,0 +1,7 @@
+   Compiling context-core v0.1.0 (D:\research 1\mcp\token reducer\crates\context-core)
+   Compiling context-store v0.1.0 (D:\research 1\mcp\token reducer\crates\context-store)
+   Compiling context-reducers v0.1.0 (D:\research 1\mcp\token reducer\crates\context-reducers)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.41s
+     Running unittests src\lib.rs (target\debug\deps\context_core-1a2b3c4d.exe)
+     Running tests\integration_auth.rs (target\debug\deps\integration_auth-9f8e7d6c.exe)
+error: test failed, to rerun pass `-p context-core --test integration_auth`

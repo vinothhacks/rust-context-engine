@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "context-engine": {
+      "command": "{{BINARY_PATH}}",
+      "args": ["mcp", "--workspace", "{{WORKSPACE_PATH}}"]
+    }
+  }
+}

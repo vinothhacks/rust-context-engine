@@ -1,0 +1,75 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.15, pytest-8.3.3, pluggy-1.5.0 -- D:\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\research 1\mcp\token reducer
+collected 24 items
+
+tests/test_classifier.py::test_detects_json_array PASSED                 [  4%]
+tests/test_classifier.py::test_detects_bom_json PASSED                   [  8%]
+tests/test_classifier.py::test_detects_git_diff PASSED                   [ 12%]
+tests/test_classifier.py::test_detects_windows_rg PASSED                 [ 16%]
+tests/test_classifier.py::TestUnicodeTraps::test_turkish_dotted_i PASSED [ 20%]
+tests/test_classifier.py::TestUnicodeTraps::test_emoji_char_spans FAILED [ 25%]
+tests/test_reducers.py::test_strip_ansi_osc8 PASSED                      [ 29%]
+tests/test_reducers.py::test_spinner_carriage_return PASSED              [ 33%]
+tests/test_reducers.py::test_secret_redaction_gate PASSED                [ 37%]
+tests/test_reducers.py::test_ledger_single_pass PASSED                   [ 41%]
+tests/test_storage.py::test_zstd_roundtrip PASSED                        [ 45%]
+tests/test_storage.py::test_db_pool_fixture ERROR                        [ 50%]
+tests/test_storage.py::test_quota_pruning PASSED                         [ 54%]
+tests/test_storage.py::test_windows_acl_dacl SKIPPED (admin check)       [ 58%]
+tests/test_legacy.py::test_strict_xfail_contract XPASS (strict)          [ 62%]
+tests/test_search.py::test_fts5_bm25_ranking PASSED                      [ 66%]
+tests/test_search.py::test_cross_scope_isolation PASSED                  [ 70%]
+tests/test_search.py::test_sanitized_chunks_only PASSED                  [ 75%]
+tests/test_mcp.py::test_initialize_handshake PASSED                      [ 79%]
+tests/test_mcp.py::test_tools_list_schema PASSED                         [ 83%]
+tests/test_mcp.py::test_context_get_byte_bounds FAILED                   [ 87%]
+tests/test_mcp.py::test_context_resume_checkpoint PASSED                 [ 91%]
+tests/test_mcp.py::test_context_stats_telemetry PASSED                   [ 95%]
+tests/test_mcp.py::test_context_doctor_readonly PASSED                   [100%]
+
+=================================== ERRORS ====================================
+____________________ ERROR at setup of test_db_pool_fixture ___________________
+Traceback (most recent call last):
+  File "tests/conftest.py", line 41, in db_pool
+    conn = connect_sqlite(":memory:", timeout=0.01)
+  File "src/db.py", line 19, in connect_sqlite
+    raise TimeoutError("busy_timeout expired")
+TimeoutError: busy_timeout expired
+
+During handling of the above exception, another exception occurred:
+
+tests/conftest.py:45: in db_pool
+    raise RuntimeError("fixture pool bootstrap failed")
+E   RuntimeError: fixture pool bootstrap failed
+================================== FAILURES ===================================
+___________________ TestUnicodeTraps.test_emoji_char_spans ____________________
+
+self = <test_classifier.TestUnicodeTraps object at 0x000001F2A3B4C5D0>
+
+    def test_emoji_char_spans(self):
+        spans = scan_json_spans("🦀 {\"k\": \"🚀\"} end")
+>       assert spans == [(2, 12)]
+E       AssertionError: assert [(4, 16)] == [(2, 12)]
+E         At index 0 diff: (4, 16) != (2, 12)
+E         Full diff:
+E         - [(2, 12)]
+E         + [(4, 16)]
+
+tests/test_classifier.py:88: AssertionError
+_______________________ test_context_get_byte_bounds __________________________
+
+    def test_context_get_byte_bounds():
+        resp = call_context_get(artifact_id="a_" + "0" * 64, bytes_spec="0:999999")
+>       assert resp["error_code"] == "BUDGET_EXCEEDED"
+E       AssertionError: expected BUDGET_EXCEEDED for 1MB request
+E       assert 'INVALID_RANGE' == 'BUDGET_EXCEEDED'
+
+tests/test_mcp.py:142: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_classifier.py::TestUnicodeTraps::test_emoji_char_spans - AssertionError: assert [(4, 16)] == [(2, 12)]
+FAILED tests/test_mcp.py::test_context_get_byte_bounds - AssertionError: expected BUDGET_EXCEEDED for 1MB request
+ERROR tests/test_storage.py::test_db_pool_fixture - RuntimeError: fixture pool bootstrap failed
+XPASS tests/test_legacy.py::test_strict_xfail_contract (strict)
+======= 2 failed, 19 passed, 1 skipped, 1 xpassed, 1 error in 1.48s ===========

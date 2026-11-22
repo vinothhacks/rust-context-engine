@@ -1,0 +1,129 @@
+diff --git a/crates/context-reducers/src/lib.rs b/crates/context-reducers/src/lib.rs
+index 1122334..8899aab 100644
+--- a/crates/context-reducers/src/lib.rs
++++ b/crates/context-reducers/src/lib.rs
+@@ -1,6 +1,52 @@ pub mod ansi;
+-pub use context_core::{ArtifactView, ReductionBudget, TransformationLedger, ViewKind};
++pub mod ansi;
++pub(crate) mod cargo_test;
++pub mod classifier;
++pub(crate) mod common;
++pub(crate) mod compiler_diag;
++pub(crate) mod git_reducer;
++pub(crate) mod log_dedup;
++pub mod ported;
++pub(crate) mod pytest_jest;
++pub(crate) mod search_hits;
++pub(crate) mod structured_json;
++pub(crate) mod unknown_safe;
++
++pub use ansi::{
++    decode_lossy_lines, detect_stream_encoding, identify_binary_magic, prepare_stream,
++    strip_ansi_and_normalize, AnsiStripOutcome, PreparedStream,
++};
++pub use classifier::{
++    classify_command_text, classify_unhinted_text, has_cargo_test_anchors,
++    has_compiler_diag_anchors, has_git_anchors, has_log_anchors, has_pytest_jest_anchors,
++    parse_command_prior, CommandPrior, GitSubcommandHint, ReducerTarget,
++};
++pub use context_core::{
++    ArtifactId, ArtifactView, ReductionBudget, SecretGuard, StreamEncoding, StreamKind,
++    TransformationLedger, ViewKind,
++};
++pub const REDUCER_VERSION_V1: &str = "1";
++
++pub struct CommandReductionInput<'a> {
++    pub argv: &'a [String],
++    pub exit_code: Option<i32>,
++    pub stdout: &'a [u8],
++    pub stderr: &'a [u8],
++    pub artifact_id: Option<&'a ArtifactId>,
++    pub originals_available: bool,
++    pub timed_out: bool,
++    pub stdout_truncated: bool,
++    pub stderr_truncated: bool,
++    pub existing_transforms: &'a [String],
++}
+@@ -210,4 +256,34 @@ impl ReducerEngine {
+-    let old_limit = 1024;
++    pub fn reduce_stream(&self, bytes: &[u8], stream_kind: StreamKind) -> ReductionOutcome {
++        reduce_stream(bytes, stream_kind, &self.budget, &self.secret_guard)
++    }
++
++    pub fn reduce_command_output(
++        &self,
++        argv: &[String],
++        exit_code: Option<i32>,
++        stdout: &[u8],
++        stderr: &[u8],
++    ) -> ReductionOutcome {
++        reduce_command_output(
++            argv,
++            exit_code,
++            stdout,
++            stderr,
++            &self.budget,
++            &self.secret_guard,
++        )
++    }
+diff --git a/crates/context-reducers/src/legacy.rs b/crates/context-reducers/src/ported.rs
+similarity index 88%
+rename from crates/context-reducers/src/legacy.rs
+rename to crates/context-reducers/src/ported.rs
+index aabbcc1..ddeeff2 100644
+--- a/crates/context-reducers/src/legacy.rs
++++ b/crates/context-reducers/src/ported.rs
+@@ -10,5 +10,25 @@ pub fn classify_content(content: &str) -> &'static str {
+-    "unknown"
++    let cleaned = strip_bom(content);
++    if cleaned.is_empty() || trim_ascii_ws(cleaned).is_empty() {
++        return "text";
++    }
++    if let Some(detected) = extract_bulk_json(cleaned) {
++        return detected.kind;
++    }
++    if cleaned.split('\n').take(500).any(|ln| DIFF_HEADER_RE.is_match(ln)) {
++        return "diff";
++    }
++    "text"
+diff --git a/crates/context-reducers/src/ansi.rs b/crates/context-reducers/src/ansi.rs
+new file mode 100644
+index 0000000..4455667
+--- /dev/null
++++ b/crates/context-reducers/src/ansi.rs
+@@ -0,0 +1,42 @@
++use context_core::StreamEncoding;
++
++pub struct AnsiStripOutcome {
++    pub text: String,
++    pub modified: bool,
++    pub stripped_sequences: usize,
++    pub cr_overwrites: usize,
++}
++
++pub fn detect_stream_encoding(bytes: &[u8]) -> StreamEncoding {
++    if bytes.is_empty() {
++        return StreamEncoding::Utf8;
++    }
++    if bytes.contains(&0) {
++        return StreamEncoding::Binary;
++    }
++    match std::str::from_utf8(bytes) {
++        Ok(_) => StreamEncoding::Utf8,
++        Err(_) => StreamEncoding::Binary,
++    }
++}
++
++pub fn decode_lossy_lines(bytes: &[u8]) -> String {
++    if bytes.is_empty() {
++        return String::new();
++    }
++    if let Ok(valid) = std::str::from_utf8(bytes) {
++        return valid.to_string();
++    }
++    bytes
++        .split(|&b| b == b'\n')
++        .map(|part| String::from_utf8_lossy(part).into_owned())
++        .collect::<Vec<_>>()
++        .join("\n")
++}

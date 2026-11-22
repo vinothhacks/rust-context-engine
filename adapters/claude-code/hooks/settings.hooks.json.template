@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"{{WORKSPACE_PATH}}/.claude/hooks/post-tool-reduce.mjs\" --binary \"{{BINARY_PATH}}\" --workspace \"{{WORKSPACE_PATH}}\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
