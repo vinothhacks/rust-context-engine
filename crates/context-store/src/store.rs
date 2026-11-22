@@ -13,10 +13,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use base64::Engine as _;
 use chrono::Utc;
 use context_core::{
-    sha256_hex, truncate_str_utf8_boundary, ArtifactEnvelope, ArtifactId, ArtifactView,
-    BoundScope, ByteRange, CaptureSummary, ContextError, LineRange, RecoveryHandle,
-    ReductionBudget, Result, SecretFinding, SecretGuard, StreamEncoding, StreamKind, ViewKind,
-    EMPTY_SHA256_HEX, TRANSFORM_SECRET_REDACT_V1, TRANSFORM_UNKNOWN_SAFE_V1,
+    sha256_hex, truncate_str_utf8_boundary, ArtifactEnvelope, ArtifactId, ArtifactSource,
+    ArtifactView, BoundScope, ByteRange, CaptureSummary, ContextError, LineRange, RecoveryHandle,
+    ReductionBudget, Result, SecretFinding, SecretGuard, SecretPolicyMode, StreamEncoding,
+    StreamKind, ViewKind, EMPTY_SHA256_HEX, TRANSFORM_SECRET_REDACT_V1, TRANSFORM_UNKNOWN_SAFE_V1,
 };
 use serde::{Deserialize, Serialize};
 use tempfile::Builder as TempBuilder;
@@ -322,8 +322,12 @@ impl BlobStore {
     ) -> Result<StoredArtifactOutcome> {
         self.ensure_store_workspace(scope)?;
 
-        // Phase 1: Run `SecretGuard::protect_bytes` on ALL streams in memory BEFORE touching disk
-        // so `SecretPolicyMode::Deny` on any stream leaves zero partial blobs behind.
+        // Phase 1: Run `SecretGuard` on `request.source` metadata (`argv` / `label`) AND all streams
+        // in memory BEFORE touching disk so `SecretPolicyMode::Deny` leaves zero partial blobs behind
+        // and secrets passed in command arguments never leak into `ArtifactEnvelope` or manifests.
+        let (sanitized_source, source_redacted_count, source_rule_ids) =
+            sanitize_artifact_source(&self.secret_guard, request.source)?;
+
         let mut protected_inputs = Vec::with_capacity(request.streams.len());
         for input in &request.streams {
             let outcome = self.secret_guard.protect_bytes(input.bytes)?;
@@ -334,8 +338,8 @@ impl BlobStore {
         let mut stream_refs: Vec<StoredStreamRef> = Vec::with_capacity(protected_inputs.len());
         let mut sanitized_streams: Vec<(StreamKind, Option<String>)> =
             Vec::with_capacity(protected_inputs.len());
-        let mut all_rule_ids: BTreeSet<String> = BTreeSet::new();
-        let mut total_secrets_redacted = 0usize;
+        let mut all_rule_ids: BTreeSet<String> = source_rule_ids;
+        let mut total_secrets_redacted = source_redacted_count;
 
         for (input, protection) in protected_inputs {
             let persisted = self.persist_protected_outcome(input.bytes, protection)?;
@@ -383,7 +387,7 @@ impl BlobStore {
             Some(existing) => ArtifactId::parse(existing.as_str())?,
             None => ArtifactId::mint(
                 scope,
-                request.source.captured_at(),
+                sanitized_source.captured_at(),
                 self.next_mint_nonce(),
                 &capture_summary.stdout_sha256,
                 Some(&capture_summary.stderr_sha256),
@@ -428,7 +432,7 @@ impl BlobStore {
         let envelope = ArtifactEnvelope::new_v1(
             scope,
             artifact_id.clone(),
-            request.source,
+            sanitized_source,
             capture_summary,
             view,
             recovery,
@@ -1321,6 +1325,77 @@ fn build_capture_summary(
         secrets_redacted,
         secret_rule_ids,
     }
+}
+
+fn sanitize_artifact_source(
+    guard: &SecretGuard,
+    source: ArtifactSource,
+) -> Result<(ArtifactSource, usize, BTreeSet<String>)> {
+    let mut findings_count = 0usize;
+    let mut rule_ids: BTreeSet<String> = BTreeSet::new();
+
+    let sanitized = match source {
+        ArtifactSource::Command {
+            argv,
+            cwd_relative,
+            exit_code,
+            duration_ms,
+            timed_out,
+            captured_at,
+        } => {
+            let mut clean_argv = Vec::with_capacity(argv.len());
+            for arg in argv {
+                let scan = guard.scan_str(&arg);
+                if scan.has_secrets() {
+                    findings_count = findings_count.saturating_add(scan.redacted_count());
+                    for id in scan.distinct_rule_ids() {
+                        rule_ids.insert(id);
+                    }
+                }
+                clean_argv.push(scan.sanitized_text);
+            }
+            ArtifactSource::Command {
+                argv: clean_argv,
+                cwd_relative,
+                exit_code,
+                duration_ms,
+                timed_out,
+                captured_at,
+            }
+        }
+        ArtifactSource::Document {
+            path_relative,
+            label,
+            media_type,
+            captured_at,
+        } => {
+            let clean_label = label.map(|raw_lbl| {
+                let scan = guard.scan_str(&raw_lbl);
+                if scan.has_secrets() {
+                    findings_count = findings_count.saturating_add(scan.redacted_count());
+                    for id in scan.distinct_rule_ids() {
+                        rule_ids.insert(id);
+                    }
+                }
+                scan.sanitized_text
+            });
+            ArtifactSource::Document {
+                path_relative,
+                label: clean_label,
+                media_type,
+                captured_at,
+            }
+        }
+    };
+
+    if findings_count > 0 && guard.policy().mode == SecretPolicyMode::Deny {
+        return Err(ContextError::SecretPolicyDenied {
+            findings_count,
+            rule_ids: rule_ids.into_iter().collect(),
+        });
+    }
+
+    Ok((sanitized, findings_count, rule_ids))
 }
 
 fn validate_sha256_hex(sha256: &str) -> Result<()> {

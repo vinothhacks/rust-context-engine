@@ -130,11 +130,12 @@ impl TransformationLedger {
     }
 
     /// Inspects an arbitrary text payload and returns `true` if it already carries a
-    /// `context-engine` v1 banner or serialized `ArtifactEnvelope` transformation marker.
+    /// syntactically valid `context-engine` v1 banner or serialized `ArtifactEnvelope`
+    /// transformation marker with a verified `ArtifactId`.
     #[must_use]
     pub fn is_already_reduced_payload(payload: &str) -> bool {
         let trimmed = payload.trim_start();
-        if trimmed.starts_with(LEDGER_HEADER_PREFIX) {
+        if Self::has_verified_v1_banner(trimmed) {
             return true;
         }
         if trimmed.starts_with('{')
@@ -147,7 +148,7 @@ impl TransformationLedger {
                     && val
                         .get("artifact_id")
                         .and_then(serde_json::Value::as_str)
-                        .is_some_and(|id| id.starts_with("a_"))
+                        .is_some_and(|id| ArtifactId::parse(id).is_ok())
                     && val
                         .pointer("/view/transformations")
                         .and_then(serde_json::Value::as_array)
@@ -158,5 +159,37 @@ impl TransformationLedger {
             }
         }
         false
+    }
+
+    fn has_verified_v1_banner(trimmed: &str) -> bool {
+        let Some(rest) = trimmed.strip_prefix(LEDGER_HEADER_PREFIX) else {
+            return false;
+        };
+        let Some(close_bracket) = rest.find(']') else {
+            return false;
+        };
+        let inner = &rest[..close_bracket];
+        if inner.contains('\n') || inner.contains('\r') {
+            return false;
+        }
+        let mut parts = inner.split_whitespace();
+        let (Some(art_kv), Some(transforms_kv), None) =
+            (parts.next(), parts.next(), parts.next())
+        else {
+            return false;
+        };
+        let Some(art_raw) = art_kv.strip_prefix("artifact=") else {
+            return false;
+        };
+        if ArtifactId::parse(art_raw).is_err() {
+            return false;
+        }
+        let Some(transforms_val) = transforms_kv.strip_prefix("transforms=") else {
+            return false;
+        };
+        !transforms_val.is_empty()
+            && transforms_val
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'@' | b'_' | b',' | b'-'))
     }
 }

@@ -1,0 +1,55 @@
+crates/context-core/src/scope.rs:42:pub struct WorkspaceScopeId(String);
+crates/context-core/src/scope.rs:88:    pub fn verify_workspace_binding(&self, stored: &WorkspaceScopeId, expected: &WorkspaceScopeId) -> Result<()> {
+crates/context-core/src/scope.rs:91:            return Err(ContextError::ScopeViolation {
+crates/context-core/src/scope.rs:145:    pub fn verify_binding(&self, stored_ws: &WorkspaceScopeId, stored_session: &SessionId, caller: &BoundScope) -> Result<()> {
+crates/context-core/src/scope.rs:150:            return Err(ContextError::ScopeViolation {
+crates/context-core/src/scope.rs:240:    pub fn resolve_request_scope(&self, client_scope: Option<&str>, session_override: Option<&str>) -> Result<Self> {
+crates/context-core/src/scope.rs:246:                return Err(ContextError::ScopeViolation {
+--
+crates/context-core/src/envelope.rs:312:    pub fn validate(&self, expected_scope: &BoundScope) -> Result<()> {
+crates/context-core/src/envelope.rs:325:        if self.project_scope != expected_scope.workspace_scope_id {
+crates/context-core/src/envelope.rs:326:            return Err(ContextError::ScopeViolation {
+--
+crates/context-execution/src/confinement.rs:42:pub fn resolve_path_in_scope(scope: &BoundScope, policy: &ExecutionPolicyConfig, requested: &Path) -> Result<ConfinedPath> {
+crates/context-execution/src/confinement.rs:69:        return Err(ContextError::PathEscape {
+crates/context-execution/src/confinement.rs:175:pub fn open_confined_file_sync(scope: &BoundScope, policy: &ExecutionPolicyConfig, requested_file: &Path) -> Result<(File, ConfinedPath)> {
+crates/context-execution/src/confinement.rs:209:        return Err(ContextError::PathEscape {
+crates/context-execution/src/confinement.rs:311:                            return Err(ContextError::PathEscape {
+--
+crates/context-store/src/store.rs:318:    pub fn put_artifact_streams(&self, scope: &BoundScope, request: PutArtifactRequest<'_>) -> Result<StoredArtifactOutcome> {
+crates/context-store/src/store.rs:493:    pub fn get_bytes(&self, caller_scope: &BoundScope, artifact_id: &ArtifactId, stream: StreamKind, range: ByteRange) -> Result<ByteSlicePage> {
+crates/context-store/src/store.rs:549:    pub fn get_lines(&self, caller_scope: &BoundScope, artifact_id: &ArtifactId, stream: StreamKind, range: LineRange) -> Result<LineSlicePage> {
+crates/context-store/src/store.rs:815:    fn ensure_store_workspace(&self, scope: &BoundScope) -> Result<()> {
+crates/context-store/src/store.rs:817:            return Err(ContextError::ScopeViolation {
+crates/context-store/src/store.rs:975:    fn load_verified_manifest(&self, caller_scope: &BoundScope, artifact_id: &ArtifactId) -> Result<StoredArtifactManifest> {
+crates/context-store/src/store.rs:1009:        parsed_id.verify_binding(&manifest.workspace_scope_id, &manifest.session_id, caller_scope)?;
+--
+crates/context-search/src/index.rs:277:    pub fn index_artifact(&self, scope: &BoundScope, req: IndexArtifactRequest<'_>) -> Result<IndexStats> {
+crates/context-search/src/index.rs:491:                    ContextError::ScopeViolation {
+crates/context-search/src/index.rs:522:    pub fn search(&self, caller_scope: &BoundScope, query: &str, session_only: bool, limit: usize) -> Result<Vec<SearchHit>> {
+crates/context-search/src/index.rs:687:                caller_scope.verify_exact_scope(&stored_ws, &stored_sess)?;
+crates/context-search/src/index.rs:690:                    .verify_workspace_binding(&stored_ws, &caller_scope.workspace_scope_id)?;
+crates/context-search/src/index.rs:754:    pub fn remove_artifact(&self, caller_scope: &BoundScope, artifact_id: &ArtifactId) -> Result<bool> {
+crates/context-search/src/index.rs:819:            Err((stored_ws, _stored_sess, true)) => Err(ContextError::ScopeViolation {
+--
+crates/context-journal/src/journal.rs:137:    pub fn record_event(&self, scope: &BoundScope, input: JournalEventInput) -> Result<RecordedEvent> {
+crates/context-journal/src/journal.rs:293:    pub fn create_checkpoint(&self, scope: &BoundScope, note: Option<&str>) -> Result<SessionCheckpoint> {
+crates/context-journal/src/journal.rs:400:    pub fn resume(&self, scope: &BoundScope) -> Result<ResumePack> {
+crates/context-journal/src/journal.rs:423:                scope.verify_exact_scope(&parsed_ws, &parsed_sess)?;
+crates/context-journal/src/journal.rs:468:    pub fn stats(&self, scope: &BoundScope, all_sessions_in_workspace: bool) -> Result<SessionStats> {
+--
+crates/context-mcp/src/engine.rs:379:    pub async fn run_command_with_cancel(&self, req: RunCommandRequest, cancel_token: &CaptureCancelToken) -> Result<RunCommandOutcome> {
+crates/context-mcp/src/engine.rs:503:    pub async fn index_document(&self, req: IndexDocumentRequest) -> Result<IndexDocumentOutcome> {
+crates/context-mcp/src/engine.rs:615:    pub fn search(&self, req: SearchQueryRequest) -> Result<SearchQueryOutcome> {
+crates/context-mcp/src/engine.rs:666:    pub fn get_slice(&self, req: GetSliceRequest) -> Result<GetSliceOutcome> {
+crates/context-mcp/src/engine.rs:785:    pub fn resume(&self, req: ResumeRequest) -> Result<ResumePack> {
+crates/context-mcp/src/engine.rs:923:    fn resolve_scope(&self, client_project_scope: Option<&str>, session_id: Option<&str>, started: Instant) -> Result<BoundScope> {
+--
+crates/context-cli/src/setup.rs:236:pub fn run_setup_with_env(options: &SetupOptions, env_paths: &HostEnvPaths) -> Result<SetupReport> {
+crates/context-cli/src/setup.rs:1027:        return Err(ContextError::ScopeViolation {
+crates/context-cli/src/setup.rs:1044:            return Err(ContextError::ScopeViolation {
+crates/context-cli/src/setup.rs:1081:            return Err(ContextError::ScopeViolation {
+--
+crates/context-mcp/src/tools.rs:342:pub async fn dispatch_tool_call(engine: &ContextEngine, tool_name: &str, raw_arguments: Option<&Value>, cancel_token: &CaptureCancelToken) -> std::result::Result<CallToolResult, InvalidToolParams> {
+crates/context-mcp/src/tools.rs:414:fn render_domain_error(err: &ContextError, engine: &ContextEngine) -> CallToolResult {
+crates/context-mcp/src/tools.rs:420:        security_denial: err.is_security_denial(),

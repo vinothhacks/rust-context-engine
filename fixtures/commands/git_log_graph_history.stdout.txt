@@ -1,0 +1,190 @@
+commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678
+Author: Platform Maintainer <maintainer@local.invalid>
+Date:   Sun Nov 22 16:40:00 2026 +0000
+
+    fix(store): verify zstd frame checksum before manifest atomic rename
+
+    Ensures content-addressed blobs cannot leave dangling manifest pointers
+    if power is lost mid-write on NTFS volumes.
+
+ crates/context-store/src/store.rs    | 64 +++++++++++++++++++++++++++---------
+ crates/context-store/src/manifest.rs | 18 +++++++---
+ 2 files changed, 61 insertions(+), 21 deletions(-)
+
+commit b2c3d4e5f60718293a4b5c6d7e8f90123456789a
+Author: Security Engineer <sec@local.invalid>
+Date:   Sun Nov 22 15:55:12 2026 +0000
+
+    feat(execution): block NTFS reparse point escapes during confined open
+
+    Adds post-open file identity verification to prevent TOCTOU symlink swaps
+    between path canonicalization and handle acquisition.
+
+ crates/context-execution/src/confinement.rs | 95 +++++++++++++++++++++++++++++
+ crates/context-execution/src/gate.rs        | 22 +++++--
+ 2 files changed, 112 insertions(+), 5 deletions(-)
+
+commit c3d4e5f60718293a4b5c6d7e8f90123456789ab2
+Author: Search Maintainer <search@local.invalid>
+Date:   Sun Nov 22 15:10:44 2026 +0000
+
+    perf(search): cache prepared FTS5 bm25 statements per WAL connection
+
+    Reduces p95 query latency from 2.4ms down to 0.38ms on 10,000-chunk workspaces.
+
+ crates/context-search/src/index.rs  | 48 +++++++++++++++++----------
+ crates/context-search/src/schema.rs | 14 +++++---
+ 2 files changed, 40 insertions(+), 22 deletions(-)
+
+commit d4e5f60718293a4b5c6d7e8f90123456789ab2c3
+Author: Core Architect <core@local.invalid>
+Date:   Sun Nov 22 14:22:19 2026 +0000
+
+    feat(secrets): add multi-line PEM and Postgres URI credential redaction
+
+    Scans both stdout/stderr and document streams prior to FTS5 chunking so
+    raw credentials never enter SQLite tables or compact views.
+
+ crates/context-core/src/secrets.rs | 182 +++++++++++++++++++++++++++++++++++++
+ crates/context-core/src/policy.rs  |  39 ++++++++
+ 2 files changed, 221 insertions(+), 0 deletions(-)
+
+commit e5f60718293a4b5c6d7e8f90123456789ab2c3d4
+Author: Reducer Maintainer <reducers@local.invalid>
+Date:   Sun Nov 22 13:45:01 2026 +0000
+
+    feat(reducers): deduplicate multi-target rustc diagnostics in cargo check
+
+    Collapses identical lib and lib-test diagnostics while retaining exact
+    file:line:col spans and error codes ahead of warnings.
+
+ crates/context-reducers/src/compiler_diag.rs | 144 +++++++++++++++++++++++++++
+ crates/context-reducers/src/classifier.rs    |  31 ++++++
+ 2 files changed, 175 insertions(+), 0 deletions(-)
+
+commit f60718293a4b5c6d7e8f90123456789ab2c3d4e5
+Author: Reducer Maintainer <reducers@local.invalid>
+Date:   Sun Nov 22 13:05:33 2026 +0000
+
+    feat(reducers): strip OSC-8 terminal hyperlinks and carriage-return spinners
+
+    Normalizes indicatif progress bars on derived views without mutating
+    stored raw capture streams.
+
+ crates/context-reducers/src/ansi.rs | 129 ++++++++++++++++++++++++++
+ 1 file changed, 129 insertions(+)
+
+commit 0718293a4b5c6d7e8f90123456789ab2c3d4e5f6
+Author: MCP Maintainer <mcp@local.invalid>
+Date:   Sun Nov 22 12:18:09 2026 +0000
+
+    feat(mcp): support dual newline-delimited and Content-Length framing
+
+    Auto-detects LSP-style Content-Length headers per inbound message and
+    replies in matching framing while keeping stdout strictly pure JSON-RPC.
+
+ crates/context-mcp/src/protocol.rs | 210 +++++++++++++++++++++++++++++++++++++
+ crates/context-mcp/src/tools.rs    | 165 +++++++++++++++++++++++++++++
+ 2 files changed, 375 insertions(+)
+
+commit 18293a4b5c6d7e8f90123456789ab2c3d4e5f607
+Author: Journal Maintainer <journal@local.invalid>
+Date:   Sun Nov 22 11:40:50 2026 +0000
+
+    feat(journal): track family-scoped unresolved failures across checkpoints
+
+    Ensures running `git status` or `rg` does not clear active `cargo test`
+    failure identifiers in `context_resume`.
+
+ crates/context-journal/src/journal.rs | 168 ++++++++++++++++++++++++++++++++++
+ crates/context-journal/src/model.rs   |  74 +++++++++++++++
+ 2 files changed, 242 insertions(+)
+
+commit 293a4b5c6d7e8f90123456789ab2c3d4e5f60718
+Author: Adapter Maintainer <adapters@local.invalid>
+Date:   Sun Nov 22 10:59:27 2026 +0000
+
+    feat(adapters): add opt-in Claude Code, Cursor, OpenCode, and Codex bundles
+
+    Enforces transformation ledger checks and Caveman/Headroom coexistence
+    markers so tool outputs are never double-compressed.
+
+ adapters/MANIFEST.json                           | 190 +++++++++++++++++++++++
+ adapters/claude-code/hooks/post-tool-reduce.mjs  | 160 +++++++++++++++++++
+ adapters/opencode/plugin/context-engine-plugin.mjs | 155 ++++++++++++++++++
+ adapters/cursor/hooks/post-command-capture.ps1   | 120 ++++++++++++++
+ 4 files changed, 625 insertions(+)
+
+commit 3a4b5c6d7e8f90123456789ab2c3d4e5f6071829
+Author: CLI Maintainer <cli@local.invalid>
+Date:   Sun Nov 22 10:12:15 2026 +0000
+
+    feat(cli): implement setup --dry-run default and global config refusal
+
+    Refuses writing to ~/.cursor, ~/.claude, ~/.codex, and %APPDATA% even if
+    explicitly passed via --output-dir.
+
+ crates/context-cli/src/setup.rs | 340 ++++++++++++++++++++++++++++++++++++++++
+ crates/context-cli/src/main.rs  | 188 ++++++++++++++++++++++
+ 2 files changed, 528 insertions(+)
+
+commit 4b5c6d7e8f90123456789ab2c3d4e5f60718293a
+Author: Capture Maintainer <capture@local.invalid>
+Date:   Sun Nov 22 09:30:00 2026 +0000
+
+    feat(capture): concurrent bounded stdout/stderr readers with kill_on_drop
+
+    Prevents child pipe buffer deadlocks when commands flood both stdout and
+    stderr simultaneously beyond 16 MiB.
+
+ crates/context-capture/src/command.rs | 145 ++++++++++++++++++++++++++++++++++
+ crates/context-capture/src/stream.rs  | 118 ++++++++++++++++++++++++++++
+ 2 files changed, 263 insertions(+)
+
+commit 5c6d7e8f90123456789ab2c3d4e5f60718293a4b
+Author: Store Maintainer <store@local.invalid>
+Date:   Sun Nov 22 08:48:33 2026 +0000
+
+    feat(store): apply owner-only Windows DACL via icacls on .context-engine/store
+
+    Restricts artifact manifests and compressed blobs to the current OS principal.
+
+ crates/context-store/src/permissions.rs | 132 ++++++++++++++++++++++++++++++++
+ 1 file changed, 132 insertions(+)
+
+commit 6d7e8f90123456789ab2c3d4e5f60718293a4b5c
+Author: Porting Sandbox <port@local.invalid>
+Date:   Sun Nov 22 08:05:11 2026 +0000
+
+    feat(reducers): integrate rust-anything gated JSON structural crusher
+
+    Retains error-bearing array records while summarizing homogeneous bulk schemas.
+
+ crates/context-reducers/src/ported.rs          | 290 +++++++++++++++++++++++++
+ crates/context-reducers/src/structured_json.rs | 142 ++++++++++++
+ 2 files changed, 432 insertions(+)
+
+commit 7e8f90123456789ab2c3d4e5f60718293a4b5c6d
+Author: Core Architect <core@local.invalid>
+Date:   Sun Nov 22 07:20:04 2026 +0000
+
+    feat(core): define v1 ArtifactEnvelope and opaque server-minted ArtifactId
+
+    Binds every artifact digest to (workspace_scope_id, session_id) so client
+    requests cannot enumerate or forge cross-project handles.
+
+ crates/context-core/src/envelope.rs | 215 ++++++++++++++++++++++++++++++++++++
+ crates/context-core/src/scope.rs    | 176 +++++++++++++++++++++++++++++
+ 2 files changed, 391 insertions(+)
+
+commit 8f90123456789ab2c3d4e5f60718293a4b5c6d7e
+Author: Core Architect <core@local.invalid>
+Date:   Sun Nov 22 06:45:00 2026 +0000
+
+    chore(workspace): initialize Rust workspace and ADR architecture docs
+
+    Establishes forbid(unsafe_code), thin LTO release profile, and threat model.
+
+ Cargo.toml            |  78 ++++++++++++++++
+ docs/threat-model.md  | 164 +++++++++++++++++++++++++++++++++
+ 2 files changed, 242 insertions(+)

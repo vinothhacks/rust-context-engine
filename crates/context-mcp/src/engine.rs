@@ -656,7 +656,7 @@ impl ContextEngine {
             workspace_scope_id: scope.workspace_scope_id,
             session_id: scope.session_id,
             session_only: req.session_only,
-            query: req.query,
+            query: self.secret_guard.redact_str(&req.query),
             hit_count: hits.len(),
             hits,
         })

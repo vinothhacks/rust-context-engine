@@ -1,0 +1,68 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
+    Starting 48 tests across 4 binaries (2 skipped)
+        PASS [   0.008s] context-core::unit budget::utf8_boundary_1
+        PASS [   0.009s] context-core::unit budget::utf8_boundary_2
+        PASS [   0.007s] context-core::unit budget::utf8_boundary_3
+        PASS [   0.011s] context-core::unit budget::utf8_boundary_4
+        PASS [   0.010s] context-core::unit ledger::single_pass_1
+        PASS [   0.008s] context-core::unit ledger::single_pass_2
+        PASS [   0.009s] context-core::unit ledger::single_pass_3
+        PASS [   0.012s] context-core::unit policy::allowlist_cargo
+        PASS [   0.011s] context-core::unit policy::allowlist_git
+        PASS [   0.010s] context-core::unit policy::denylist_shell
+        PASS [   0.014s] context-core::unit policy::denylist_rm_rf
+        PASS [   0.013s] context-core::unit secrets::aws_key_scan
+        PASS [   0.015s] context-core::unit secrets::github_pat_scan
+        PASS [   0.012s] context-core::unit secrets::pem_block_scan
+        PASS [   0.016s] context-core::unit secrets::postgres_uri_scan
+        PASS [   0.009s] context-store::unit blobs::zstd_frame_01
+        PASS [   0.010s] context-store::unit blobs::zstd_frame_02
+        PASS [   0.011s] context-store::unit blobs::zstd_frame_03
+        PASS [   0.012s] context-store::unit blobs::zstd_frame_04
+        PASS [   0.014s] context-store::unit blobs::zstd_frame_05
+        PASS [   0.013s] context-store::unit blobs::zstd_frame_06
+        PASS [   0.015s] context-store::unit blobs::zstd_frame_07
+        PASS [   0.011s] context-store::unit blobs::zstd_frame_08
+        FAIL [   0.052s] context-store::unit store::zstd_crc_mismatch
+
+--- STDERR:              context-store::unit store::zstd_crc_mismatch ---
+thread 'store::zstd_crc_mismatch' panicked at crates/context-store/src/store.rs:1148:17:
+assertion `left == right` failed: corrupted zstd frame must surface INTEGRITY_MISMATCH
+  left: "STORAGE_ERROR"
+ right: "INTEGRITY_MISMATCH"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+        PASS [   0.018s] context-search::unit index::fts5_rank_01
+        PASS [   0.017s] context-search::unit index::fts5_rank_02
+        PASS [   0.019s] context-search::unit index::fts5_rank_03
+        PASS [   0.016s] context-search::unit index::fts5_rank_04
+        PASS [   0.015s] context-search::unit index::fts5_rank_05
+        PASS [   0.020s] context-search::unit index::fts5_rank_06
+        PASS [   0.021s] context-search::unit index::fts5_rank_07
+        PASS [   0.018s] context-search::unit index::fts5_rank_08
+        PASS [   0.014s] context-search::unit index::fts5_rank_09
+        PASS [   0.016s] context-search::unit index::fts5_rank_10
+        PASS [   0.022s] context-mcp::unit auth::initialize_ok
+        PASS [   0.019s] context-mcp::unit auth::tools_list_ok
+        PASS [   0.024s] context-mcp::unit auth::content_length_ok
+        PASS [   0.023s] context-mcp::unit auth::newline_framing_ok
+        PASS [   0.021s] context-mcp::unit auth::cancel_inflight_ok
+        PASS [   0.025s] context-mcp::unit auth::bounded_output_ok
+        PASS [   0.018s] context-mcp::unit auth::dotenv_blocked_ok
+        PASS [   0.017s] context-mcp::unit auth::shell_denied_ok
+        PASS [   0.020s] context-mcp::unit auth::session_scope_ok
+        PASS [   0.019s] context-mcp::unit auth::stats_telemetry_ok
+        PASS [   0.022s] context-mcp::unit auth::doctor_readonly_ok
+        PASS [   0.021s] context-mcp::unit auth::resume_pack_ok
+        PASS [   0.020s] context-mcp::unit auth::prune_ttl_ok
+        FAIL [   0.064s] context-mcp::unit auth::token_scope_enforced
+
+--- STDERR:              context-mcp::unit auth::token_scope_enforced ---
+thread 'auth::token_scope_enforced' panicked at crates/context-mcp/src/engine.rs:933:13:
+assertion `left == right` failed: cross-workspace artifact request must return SCOPE_VIOLATION
+  left: Ok(SliceLen(2048))
+ right: Err(ScopeViolation("ws_a != ws_b"))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+     Summary [   0.612s] 48 tests run: 46 passed, 2 failed, 2 skipped
+error: test run failed
