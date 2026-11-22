@@ -212,7 +212,13 @@ export function invokeContextEngineRun({
   const canonicalWorkspace = fs.realpathSync(workspacePath);
   const resolvedBin = resolveBinaryPath(canonicalWorkspace, binaryPath);
 
-  const engineArgs = ["run", "--workspace", canonicalWorkspace];
+  const engineArgs = [
+    "run",
+    "--json",
+    "--no-exit-code-passthrough",
+    "--workspace",
+    canonicalWorkspace,
+  ];
   if (sessionId && /^[A-Za-z0-9_.-]{1,128}$/.test(sessionId)) {
     engineArgs.push("--session", sessionId);
   }
@@ -255,6 +261,7 @@ export function invokeContextEngineIndex({
   const engineArgs = [
     "index",
     "--stdin",
+    "--json",
     "--workspace",
     canonicalWorkspace,
     "--label",

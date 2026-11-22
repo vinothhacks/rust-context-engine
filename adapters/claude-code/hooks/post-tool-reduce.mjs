@@ -387,6 +387,7 @@ export function processHookEvent(event, options = {}) {
   const indexArgs = [
     "index",
     "--stdin",
+    "--json",
     "--workspace",
     canonicalWorkspace,
     "--label",

@@ -296,6 +296,7 @@ name = "context-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "chrono",
  "clap",
  "context-capture",
@@ -370,6 +371,7 @@ dependencies = [
 name = "context-mcp"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "chrono",
  "context-capture",
  "context-core",
