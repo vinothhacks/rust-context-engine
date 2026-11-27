@@ -1,0 +1,40 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  package:
+    needs: verify
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked --release -p context-cli
+      - name: Verify version and package Linux x64
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary=target/release/context-engine
+          version="$("$binary" --version)"
+          test "v${version##* }" = "$GITHUB_REF_NAME"
+          name="context-engine-$GITHUB_REF_NAME-x86_64-unknown-linux-gnu"
+          mkdir -p "dist/$name"
+          cp "$binary" LICENSE-APACHE LICENSE-MIT NOTICE README.md "dist/$name/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          cd dist
+          sha256sum -- "$name.tar.gz" > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          fail_on_unmatched_files: true
+          generate_release_notes: true
