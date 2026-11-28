@@ -134,7 +134,8 @@ mod tests {
             "sys.stdout.buffer.flush()\n",
             "time.sleep(10)\n",
         );
-        let req = CommandRequest::new(["python", "-c", script]).with_timeout_ms(800);
+        // Leave time for a cold Python process to flush its first line on a busy runner.
+        let req = CommandRequest::new(["python", "-c", script]).with_timeout_ms(2_500);
         let approved = gate.authorize(&scope, &req).expect("authorize");
 
         let captured = capture_command(&approved).await.expect("timeout handled");
