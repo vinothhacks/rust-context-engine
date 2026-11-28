@@ -9,9 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
-use context_core::{
-    ByteRange, ContextError, LineRange, Result, StreamKind, TransformationLedger,
-};
+use context_core::{ByteRange, ContextError, LineRange, Result, StreamKind, TransformationLedger};
 use context_journal::ResumePack;
 use context_mcp::{
     run_stdio_server, ContextEngine, DoctorReport, EnginePruneReport, EngineStatsReport,
@@ -366,10 +364,7 @@ pub async fn run_cli(cli: Cli) -> Result<i32> {
             let source = match (file_path, stdin) {
                 (Some(path), false) => IndexSource::FilePath(path),
                 (None, true) => {
-                    let max_read = engine
-                        .budget()
-                        .max_capture_stream_bytes
-                        .saturating_add(1);
+                    let max_read = engine.budget().max_capture_stream_bytes.saturating_add(1);
                     let bytes = read_stdin_bounded(max_read).await?;
                     IndexSource::InlineBytes(bytes)
                 }
@@ -458,15 +453,9 @@ pub async fn run_cli(cli: Cli) -> Result<i32> {
             };
 
             let range = if let Some(ref line_spec) = lines {
-                GetRangeSelector::Lines(LineRange::parse(
-                    line_spec,
-                    engine.budget().max_get_lines,
-                )?)
+                GetRangeSelector::Lines(LineRange::parse(line_spec, engine.budget().max_get_lines)?)
             } else if let Some(ref byte_spec) = bytes {
-                GetRangeSelector::Bytes(ByteRange::parse(
-                    byte_spec,
-                    engine.budget().max_get_bytes,
-                )?)
+                GetRangeSelector::Bytes(ByteRange::parse(byte_spec, engine.budget().max_get_bytes)?)
             } else {
                 GetRangeSelector::DefaultWindow
             };
@@ -662,10 +651,8 @@ fn write_stdout_json<T: Serialize>(value: &T) -> Result<()> {
 }
 
 fn write_stdout_envelope_compact(envelope: &context_core::ArtifactEnvelope) -> Result<()> {
-    let banner = TransformationLedger::format_banner(
-        &envelope.artifact_id,
-        &envelope.view.transformations,
-    );
+    let banner =
+        TransformationLedger::format_banner(&envelope.artifact_id, &envelope.view.transformations);
     let mut out = io::stdout().lock();
     writeln!(out, "{banner}")?;
     if !envelope.view.safe_excerpt.is_empty() {
@@ -892,7 +879,11 @@ fn write_stdout_prune(report: &EnginePruneReport) -> Result<()> {
 
 fn write_stdout_doctor(report: &DoctorReport) -> Result<()> {
     let mut out = io::stdout().lock();
-    let badge = if report.healthy { "HEALTHY" } else { "DEGRADED" };
+    let badge = if report.healthy {
+        "HEALTHY"
+    } else {
+        "DEGRADED"
+    };
     writeln!(
         out,
         "doctor: {badge} (context-engine v{}, schema v{})",
@@ -947,7 +938,9 @@ fn write_stdout_doctor(report: &DoctorReport) -> Result<()> {
 fn write_stdout_setup(report: &SetupReport) -> Result<()> {
     let mut out = io::stdout().lock();
     let mode_label = match report.mode {
-        SetupWriteMode::DryRun => "DRY-RUN (no files written; pass --write-project or --output-dir <dir> to write)",
+        SetupWriteMode::DryRun => {
+            "DRY-RUN (no files written; pass --write-project or --output-dir <dir> to write)"
+        }
         SetupWriteMode::OutputDir => "WROTE TO --output-dir",
         SetupWriteMode::WriteProject => "WROTE TO PROJECT WORKSPACE",
     };

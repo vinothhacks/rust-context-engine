@@ -14,7 +14,9 @@ use context_core::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::ported::{classify_content, extract_bulk_json, parse_search_result_line, TIMESTAMP_ROW_RE};
+use crate::ported::{
+    classify_content, extract_bulk_json, parse_search_result_line, TIMESTAMP_ROW_RE,
+};
 
 /// Policy-selected domain reducer target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -126,7 +128,8 @@ static GIT_COMMIT_LOG_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static GIT_PORCELAIN_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\A## [A-Za-z0-9._/-]+(?:\.\.\.[A-Za-z0-9._/-]+)?").expect("valid GIT_PORCELAIN_HEADER_RE")
+    Regex::new(r"\A## [A-Za-z0-9._/-]+(?:\.\.\.[A-Za-z0-9._/-]+)?")
+        .expect("valid GIT_PORCELAIN_HEADER_RE")
 });
 
 static LOG_SEVERITY_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -201,12 +204,12 @@ pub fn parse_command_prior(argv: &[String]) -> CommandPrior {
 }
 
 fn parse_cargo_prior(args: &[String]) -> CommandPrior {
-    let has_json_format = args.windows(2).any(|w| {
-        w[0] == "--message-format" && w[1].to_ascii_lowercase().starts_with("json")
-    }) || args.iter().any(|a| {
-        a.to_ascii_lowercase()
-            .starts_with("--message-format=json")
-    });
+    let has_json_format = args
+        .windows(2)
+        .any(|w| w[0] == "--message-format" && w[1].to_ascii_lowercase().starts_with("json"))
+        || args
+            .iter()
+            .any(|a| a.to_ascii_lowercase().starts_with("--message-format=json"));
 
     let flags_with_value = [
         "-C",

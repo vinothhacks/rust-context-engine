@@ -83,7 +83,8 @@ pub fn resolve_path_in_scope(
     }
     if simplified_requested.is_relative() {
         policy.ensure_non_sensitive_path(simplified_requested)?;
-    } else if let Some(lexical_rel) = relative_within_workspace(simplified_requested, &canonical_root)
+    } else if let Some(lexical_rel) =
+        relative_within_workspace(simplified_requested, &canonical_root)
     {
         if lexical_rel != "." {
             policy.ensure_non_sensitive_path(Path::new(&lexical_rel))?;
@@ -197,13 +198,12 @@ pub fn open_confined_file_sync(
 
     // Post-open TOCTOU verification while holding `file` open.
     let canonical_root = canonicalize_workspace_root(&scope.workspace_root)?;
-    let post_canon = dunce::canonicalize(&confined.canonical).map_err(|err| {
-        ContextError::PathEscape {
+    let post_canon =
+        dunce::canonicalize(&confined.canonical).map_err(|err| ContextError::PathEscape {
             path: requested_file.display().to_string(),
             workspace_root: canonical_root.display().to_string(),
             reason: format!("post-open canonicalization failed during TOCTOU check: {err}"),
-        }
-    })?;
+        })?;
 
     let Some(post_relative) = relative_within_workspace(&post_canon, &canonical_root) else {
         return Err(ContextError::PathEscape {
@@ -460,16 +460,17 @@ fn verify_same_file_identity(
         });
     }
 
-    if let (Ok(pre_created), Ok(open_created), Ok(post_created)) =
-        (pre_meta.created(), opened_meta.created(), post_meta.created())
-    {
+    if let (Ok(pre_created), Ok(open_created), Ok(post_created)) = (
+        pre_meta.created(),
+        opened_meta.created(),
+        post_meta.created(),
+    ) {
         if pre_created != open_created || open_created != post_created {
             return Err(ContextError::PathEscape {
                 path: requested_file.display().to_string(),
                 workspace_root: canonical_root.display().to_string(),
-                reason:
-                    "file creation timestamp changed during open (TOCTOU replacement detected)"
-                        .to_string(),
+                reason: "file creation timestamp changed during open (TOCTOU replacement detected)"
+                    .to_string(),
             });
         }
     }

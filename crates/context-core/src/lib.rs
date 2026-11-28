@@ -84,7 +84,11 @@ mod tests {
 
         // Valid within same workspace + session
         art_a
-            .verify_binding(&scope_a1.workspace_scope_id, &scope_a1.session_id, &scope_a2)
+            .verify_binding(
+                &scope_a1.workspace_scope_id,
+                &scope_a1.session_id,
+                &scope_a2,
+            )
             .expect("matching scope allowed");
 
         // Denied across workspaces
@@ -107,7 +111,15 @@ mod tests {
 
     #[test]
     fn invalid_session_and_artifact_ids_rejected() {
-        for bad_session in ["", ".", "..", "-flag", "bad/slash", "bad\\slash", "bad space"] {
+        for bad_session in [
+            "",
+            ".",
+            "..",
+            "-flag",
+            "bad/slash",
+            "bad\\slash",
+            "bad space",
+        ] {
             assert!(
                 SessionId::parse(bad_session).is_err(),
                 "expected session '{bad_session}' to be rejected"
@@ -211,7 +223,10 @@ mod tests {
 
     #[test]
     fn stream_encoding_and_range_validation() {
-        assert_eq!(StreamEncoding::detect(b"hello rust\n"), StreamEncoding::Utf8);
+        assert_eq!(
+            StreamEncoding::detect(b"hello rust\n"),
+            StreamEncoding::Utf8
+        );
         assert_eq!(
             StreamEncoding::detect(b"hello\0world"),
             StreamEncoding::Binary
@@ -311,13 +326,20 @@ mod tests {
             ".git/credentials",
         ] {
             assert!(
-                policy.ensure_non_sensitive_path(Path::new(blocked_path)).is_err(),
+                policy
+                    .ensure_non_sensitive_path(Path::new(blocked_path))
+                    .is_err(),
                 "expected '{blocked_path}' to be blocked"
             );
         }
 
         // Permitted workspace paths (including public SSH key `.pub` and normal source files)
-        for safe_path in ["src/main.rs", "Cargo.toml", "docs/id_ed25519.pub", ".gitignore"] {
+        for safe_path in [
+            "src/main.rs",
+            "Cargo.toml",
+            "docs/id_ed25519.pub",
+            ".gitignore",
+        ] {
             policy
                 .ensure_non_sensitive_path(Path::new(safe_path))
                 .expect("safe path permitted");
@@ -358,13 +380,13 @@ mod tests {
         let gl_pat = "glpat-0123456789abcdefghij_XYZ";
         let openai_key = "sk-proj-0123456789abcdefghijklmnopqrstuvwxyzABCD";
         let anthropic_key = "sk-ant-api03-0123456789abcdefghijklmnopqrstuvwxyz";
-        let slack_tok = format!("{}{}", "xoxb-", "123456789012-1234567890123-abcdefghijklmnopqrstuvwx");
+        let slack_tok = format!(
+            "{}{}",
+            "xoxb-", "123456789012-1234567890123-abcdefghijklmnopqrstuvwx"
+        );
         let slack_hook = format!(
             "https://{}/services/{}/{}/{}",
-            "hooks.slack.com",
-            "T01234567",
-            "B01234567",
-            "aBcDeFgHiJkLmNoPqRsTuVwX",
+            "hooks.slack.com", "T01234567", "B01234567", "aBcDeFgHiJkLmNoPqRsTuVwX",
         );
         let jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
         let bearer = "Authorization: Bearer mySuperSecretOpaqueBearerToken987654";
@@ -466,7 +488,8 @@ mod tests {
 
     #[test]
     fn secret_policy_modes_enforce_redact_quarantine_and_deny_on_bytes() {
-        let secret_payload = b"log line before\nGITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyzABCD\n";
+        let secret_payload =
+            b"log line before\nGITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyzABCD\n";
 
         // 1. Default RedactBeforeIndex
         let redact_guard = SecretGuard::new(SecretPolicy {
@@ -574,7 +597,9 @@ mod tests {
         let tmp = TempDir::new().expect("tempdir");
         let scope = BoundScope::bind(tmp.path(), None).expect("default session bind");
         assert_eq!(scope.session_id.as_str(), DEFAULT_SESSION_ID);
-        assert!(scope.store_dir().ends_with(Path::new(".context-engine").join("store")));
+        assert!(scope
+            .store_dir()
+            .ends_with(Path::new(".context-engine").join("store")));
         assert!(scope
             .index_db_path()
             .ends_with(Path::new(".context-engine").join("index.db")));
@@ -616,8 +641,14 @@ mod tests {
 
         envelope.validate(&scope).expect("valid document envelope");
         assert_eq!(envelope.source.exit_code(), None);
-        assert_eq!("stderr".parse::<StreamKind>().expect("stderr"), StreamKind::Stderr);
-        assert_eq!("stdout".parse::<StreamKind>().expect("stdout"), StreamKind::Stdout);
+        assert_eq!(
+            "stderr".parse::<StreamKind>().expect("stderr"),
+            StreamKind::Stderr
+        );
+        assert_eq!(
+            "stdout".parse::<StreamKind>().expect("stdout"),
+            StreamKind::Stdout
+        );
         assert!("invalid_stream".parse::<StreamKind>().is_err());
     }
 
@@ -642,7 +673,9 @@ mod tests {
 
         let exec_policy = ExecutionPolicyConfig::default();
         assert_eq!(
-            exec_policy.resolve_timeout_ms(None).expect("default timeout"),
+            exec_policy
+                .resolve_timeout_ms(None)
+                .expect("default timeout"),
             120_000
         );
         assert!(exec_policy.resolve_timeout_ms(Some(0)).is_err());

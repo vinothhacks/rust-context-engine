@@ -145,7 +145,10 @@ mod tests {
         assert!(!captured.is_complete());
         assert_eq!(captured.stdout.bytes, b"before-sleep\n");
         assert_eq!(
-            captured.check_timeout().expect_err("timed out").error_code(),
+            captured
+                .check_timeout()
+                .expect_err("timed out")
+                .error_code(),
             "EXECUTION_TIMEOUT"
         );
 
@@ -252,8 +255,12 @@ mod tests {
             )
             .expect("authorize");
 
-        let outer = tokio::time::timeout(Duration::from_millis(120), capture_command(&approved)).await;
-        assert!(outer.is_err(), "outer timeout should drop capture_command future");
+        let outer =
+            tokio::time::timeout(Duration::from_millis(120), capture_command(&approved)).await;
+        assert!(
+            outer.is_err(),
+            "outer timeout should drop capture_command future"
+        );
     }
 
     proptest! {

@@ -989,14 +989,7 @@ async fn live_mcp_subprocess_content_length_framing_and_cli_binary_roundtrip_mat
     assert!(String::from_utf8_lossy(&doctor_cli.stdout).contains("doctor: HEALTHY"));
 
     let prune_cli = Command::new(bin)
-        .args([
-            "prune",
-            "--workspace",
-            ws_str,
-            "--ttl-secs",
-            "0",
-            "--json",
-        ])
+        .args(["prune", "--workspace", ws_str, "--ttl-secs", "0", "--json"])
         .output()
         .await
         .expect("cli prune");
@@ -1061,8 +1054,8 @@ async fn live_setup_generator_and_real_agent_adapters_hooks_idempotence_and_coex
             !content.contains("{{"),
             "unresolved template placeholder in {rel}"
         );
-        let parsed: Value = serde_json::from_str(&content)
-            .unwrap_or_else(|e| panic!("invalid JSON in {rel}: {e}"));
+        let parsed: Value =
+            serde_json::from_str(&content).unwrap_or_else(|e| panic!("invalid JSON in {rel}: {e}"));
         assert!(parsed.is_object(), "{rel} must be a JSON object");
     }
 
@@ -1136,7 +1129,10 @@ async fn live_setup_generator_and_real_agent_adapters_hooks_idempotence_and_coex
             .await
             .expect("write hook stdin");
     }
-    let claude_out = node_child.wait_with_output().await.expect("wait claude hook");
+    let claude_out = node_child
+        .wait_with_output()
+        .await
+        .expect("wait claude hook");
     assert!(claude_out.status.success());
     let claude_hook_json: Value =
         serde_json::from_slice(&claude_out.stdout).expect("parse claude hook JSON");
@@ -1153,7 +1149,10 @@ async fn live_setup_generator_and_real_agent_adapters_hooks_idempotence_and_coex
         "0".repeat(64),
         "x".repeat(5_000)
     );
-    let headroom_marker = format!("[headroom smart_crusher CCR-abcdef12]\n{}", "h".repeat(5_000));
+    let headroom_marker = format!(
+        "[headroom smart_crusher CCR-abcdef12]\n{}",
+        "h".repeat(5_000)
+    );
     let caveman_marker = format!("<!-- caveman-compress -->\n{}", "c".repeat(5_000));
     let already_reduced_banner = format!("{add_ctx}\n{}", "r".repeat(5_000));
 

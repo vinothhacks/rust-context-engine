@@ -192,7 +192,11 @@ impl SearchIndex {
     }
 
     /// Convenience helper to index a single stream (`stdout`, `stderr`, `combined`, `document`).
-    pub fn index_stream(&self, scope: &BoundScope, req: IndexStreamRequest<'_>) -> Result<IndexStats> {
+    pub fn index_stream(
+        &self,
+        scope: &BoundScope,
+        req: IndexStreamRequest<'_>,
+    ) -> Result<IndexStats> {
         self.index_artifact(
             scope,
             IndexArtifactRequest {
@@ -314,7 +318,12 @@ impl SearchIndex {
             let chunks = chunk_sanitized_text(&report.sanitized_text, self.config.chunk_config);
 
             // Defense-in-depth post-condition assertion on every individual chunk + label before SQL.
-            if self.config.secret_guard.scan_str(&sanitized_label).has_secrets() {
+            if self
+                .config
+                .secret_guard
+                .scan_str(&sanitized_label)
+                .has_secrets()
+            {
                 return Err(ContextError::SecretPolicyDenied {
                     findings_count: 1,
                     rule_ids: vec!["POST_REDACTION_ASSERTION".to_string()],
@@ -692,7 +701,9 @@ impl SearchIndex {
 
             let stream: StreamKind = row.stream.parse()?;
             let line_start = usize::try_from(row.line_start.max(1)).unwrap_or(1);
-            let raw_end = usize::try_from(row.line_end.max(1)).unwrap_or(line_start).max(line_start);
+            let raw_end = usize::try_from(row.line_end.max(1))
+                .unwrap_or(line_start)
+                .max(line_start);
             let clamped_end = if raw_end - line_start + 1 > max_get_lines {
                 line_start + max_get_lines - 1
             } else {
@@ -779,40 +790,41 @@ impl SearchIndex {
         ArtifactId::parse(artifact_id.as_str())?;
 
         let mut conn = self.lock_conn()?;
-        let outcome = with_lock_retry("failed to remove artifact from search index", || {
-            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let found: Option<(String, String)> = tx
-                .query_row(
-                    "SELECT workspace_scope_id, session_id
+        let outcome =
+            with_lock_retry("failed to remove artifact from search index", || {
+                let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+                let found: Option<(String, String)> = tx
+                    .query_row(
+                        "SELECT workspace_scope_id, session_id
                      FROM search_artifacts
                      WHERE artifact_id = ?1",
+                        params![artifact_id.as_str()],
+                        |row| Ok((row.get(0)?, row.get(1)?)),
+                    )
+                    .optional()?;
+
+                let Some((stored_ws, stored_sess)) = found else {
+                    return Ok(Ok(false));
+                };
+
+                if stored_ws != caller_scope.workspace_scope_id.as_str() {
+                    return Ok(Err((stored_ws, stored_sess, true)));
+                }
+                if enforce_session && stored_sess != caller_scope.session_id.as_str() {
+                    return Ok(Err((stored_ws, stored_sess, false)));
+                }
+
+                tx.execute(
+                    "DELETE FROM search_chunks WHERE artifact_id = ?1",
                     params![artifact_id.as_str()],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
-                )
-                .optional()?;
-
-            let Some((stored_ws, stored_sess)) = found else {
-                return Ok(Ok(false));
-            };
-
-            if stored_ws != caller_scope.workspace_scope_id.as_str() {
-                return Ok(Err((stored_ws, stored_sess, true)));
-            }
-            if enforce_session && stored_sess != caller_scope.session_id.as_str() {
-                return Ok(Err((stored_ws, stored_sess, false)));
-            }
-
-            tx.execute(
-                "DELETE FROM search_chunks WHERE artifact_id = ?1",
-                params![artifact_id.as_str()],
-            )?;
-            let deleted = tx.execute(
+                )?;
+                let deleted = tx.execute(
                 "DELETE FROM search_artifacts WHERE artifact_id = ?1 AND workspace_scope_id = ?2",
                 params![artifact_id.as_str(), caller_scope.workspace_scope_id.as_str()],
             )?;
-            tx.commit()?;
-            Ok(Ok(deleted > 0))
-        })?;
+                tx.commit()?;
+                Ok(Ok(deleted > 0))
+            })?;
 
         match outcome {
             Ok(removed) => Ok(removed),
@@ -847,8 +859,9 @@ impl SearchIndex {
         SessionId::parse(caller_scope.session_id.as_str())?;
 
         let mut conn = self.lock_conn()?;
-        let (raw_ids, pruned_chunks, reclaimed_bytes) =
-            with_lock_retry("failed to prune expired search artifacts", || {
+        let (raw_ids, pruned_chunks, reclaimed_bytes) = with_lock_retry(
+            "failed to prune expired search artifacts",
+            || {
                 let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
                 let expired: Vec<(String, i64)> = {
@@ -878,14 +891,15 @@ impl SearchIndex {
                         "DELETE FROM search_artifacts WHERE artifact_id = ?1 AND workspace_scope_id = ?2",
                         params![art_id.as_str(), caller_scope.workspace_scope_id.as_str()],
                     )?;
-                    reclaimed_bytes = reclaimed_bytes
-                        .saturating_add(u64::try_from(bytes.max(0)).unwrap_or(0));
+                    reclaimed_bytes =
+                        reclaimed_bytes.saturating_add(u64::try_from(bytes.max(0)).unwrap_or(0));
                     ids.push(art_id);
                 }
 
                 tx.commit()?;
                 Ok((ids, deleted_chunks, reclaimed_bytes))
-            })?;
+            },
+        )?;
 
         let mut pruned_artifacts = Vec::with_capacity(raw_ids.len());
         for raw in raw_ids {

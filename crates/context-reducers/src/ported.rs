@@ -272,7 +272,11 @@ pub(crate) fn loads_strict(span: &str) -> Option<Value> {
 }
 
 const fn matching_open(close: char) -> char {
-    if close == '}' { '{' } else { '[' }
+    if close == '}' {
+        '{'
+    } else {
+        '['
+    }
 }
 
 pub(crate) fn scan_from(
@@ -582,7 +586,11 @@ pub(crate) fn parse_search_result_line(line: &str) -> Option<ParsedSearchLine<'_
         let b = bytes[i];
         // Allow spaces inside Windows paths (`D:\research 1\...`), disallow in bare unrooted tokens
         // unless path contains `/` or `\`.
-        if (b == b' ' || b == b'\t') && !is_win_drive && !line[..i].contains('/') && !line[..i].contains('\\') {
+        if (b == b' ' || b == b'\t')
+            && !is_win_drive
+            && !line[..i].contains('/')
+            && !line[..i].contains('\\')
+        {
             return None;
         }
         if (b == b':' || b == b'-') && i > 0 && i + 2 <= n && bytes[i + 1].is_ascii_digit() {
@@ -603,7 +611,11 @@ pub(crate) fn parse_search_result_line(line: &str) -> Option<ParsedSearchLine<'_
                 }
                 // Optional column segment in `rg --column` / `rg --vimgrep`: `path:line:col:snippet`
                 let mut rest_start = j + 1;
-                if b == b':' && bytes[j] == b':' && rest_start < n && bytes[rest_start].is_ascii_digit() {
+                if b == b':'
+                    && bytes[j] == b':'
+                    && rest_start < n
+                    && bytes[rest_start].is_ascii_digit()
+                {
                     let mut k = rest_start;
                     while k < n && bytes[k].is_ascii_digit() {
                         k += 1;
@@ -1268,7 +1280,9 @@ mod tests {
             "diff"
         );
         assert_eq!(
-            classify_content("On branch main\nChanges not staged for commit:\n\tmodified:   Cargo.toml"),
+            classify_content(
+                "On branch main\nChanges not staged for commit:\n\tmodified:   Cargo.toml"
+            ),
             "git_status"
         );
         assert_eq!(

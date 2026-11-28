@@ -110,13 +110,8 @@ pub const EMBEDDED_ADAPTER_FILES: &[(&str, &str)] = &[
     ),
 ];
 
-const CANONICAL_CLIENT_ORDER: &[&str] = &[
-    "cursor",
-    "claude-code",
-    "opencode",
-    "codex",
-    "generic-mcp",
-];
+const CANONICAL_CLIENT_ORDER: &[&str] =
+    &["cursor", "claude-code", "opencode", "codex", "generic-mcp"];
 
 #[derive(Debug, Clone, Deserialize)]
 struct AdapterManifest {
@@ -239,11 +234,12 @@ pub fn run_setup_with_env(options: &SetupOptions, env_paths: &HostEnvPaths) -> R
 
     // 1. Validate raw & canonical workspace path against forbidden global directories BEFORE any I/O.
     reject_raw_global_syntax(&options.workspace)?;
-    let canonical_workspace =
-        dunce::canonicalize(&options.workspace).map_err(|err| ContextError::InvalidWorkspacePath {
+    let canonical_workspace = dunce::canonicalize(&options.workspace).map_err(|err| {
+        ContextError::InvalidWorkspacePath {
             path: options.workspace.display().to_string(),
             reason: err.to_string(),
-        })?;
+        }
+    })?;
     if !canonical_workspace.is_dir() {
         return Err(ContextError::InvalidWorkspacePath {
             path: canonical_workspace.display().to_string(),
@@ -291,12 +287,14 @@ pub fn run_setup_with_env(options: &SetupOptions, env_paths: &HostEnvPaths) -> R
     let mut pending_writes: Vec<PendingWrite> = Vec::new();
 
     for client_id in &selected_clients {
-        let client_spec = manifest.clients.get(client_id).ok_or_else(|| {
-            ContextError::InvalidConfig {
-                field: "client",
-                reason: format!("client '{client_id}' missing from embedded MANIFEST.json"),
-            }
-        })?;
+        let client_spec =
+            manifest
+                .clients
+                .get(client_id)
+                .ok_or_else(|| ContextError::InvalidConfig {
+                    field: "client",
+                    reason: format!("client '{client_id}' missing from embedded MANIFEST.json"),
+                })?;
 
         for file_spec in &client_spec.files {
             let raw_source = embedded_map
@@ -357,7 +355,11 @@ pub fn run_setup_with_env(options: &SetupOptions, env_paths: &HostEnvPaths) -> R
     if mode != SetupWriteMode::DryRun {
         for item in &pending_writes {
             ensure_not_forbidden_global_path(&item.abs_target, env_paths)?;
-            write_file_atomic(&item.abs_target, item.meta.content.as_bytes(), item.executable)?;
+            write_file_atomic(
+                &item.abs_target,
+                item.meta.content.as_bytes(),
+                item.executable,
+            )?;
         }
     }
 
@@ -390,10 +392,7 @@ fn load_embedded_manifest() -> Result<AdapterManifest> {
     Ok(manifest)
 }
 
-fn resolve_client_selection(
-    raw_client: &str,
-    manifest: &AdapterManifest,
-) -> Result<Vec<String>> {
+fn resolve_client_selection(raw_client: &str, manifest: &AdapterManifest) -> Result<Vec<String>> {
     let normalized = raw_client.trim().to_ascii_lowercase();
     if normalized.is_empty() {
         return Err(ContextError::InvalidConfig {
@@ -440,7 +439,11 @@ fn resolve_binary_path(explicit: Option<&Path>) -> Result<PathBuf> {
         Some(p) => p.to_path_buf(),
         None => std::env::current_exe()?,
     };
-    let raw_str = candidate.to_string_lossy().trim().trim_matches('"').to_string();
+    let raw_str = candidate
+        .to_string_lossy()
+        .trim()
+        .trim_matches('"')
+        .to_string();
     if raw_str.is_empty() {
         return Err(ContextError::InvalidConfig {
             field: "binary",
@@ -527,14 +530,13 @@ fn validate_rendered_syntax(spec: &ManifestFileSpec, content: &str) -> Result<()
 
     match spec.format.as_str() {
         "json" => {
-            let parsed: Value = serde_json::from_str(content).map_err(|err| {
-                ContextError::Protocol {
+            let parsed: Value =
+                serde_json::from_str(content).map_err(|err| ContextError::Protocol {
                     message: format!(
                         "rendered JSON validation failed for '{}': {err}",
                         spec.source_path
                     ),
-                }
-            })?;
+                })?;
             if !parsed.is_object() {
                 return Err(ContextError::Protocol {
                     message: format!(
@@ -805,7 +807,10 @@ fn merge_with_existing_if_needed(
                     dst_servers.insert(k.clone(), v.clone());
                 }
             }
-            Ok((format!("{}\n", serde_json::to_string_pretty(&existing_val)?), true))
+            Ok((
+                format!("{}\n", serde_json::to_string_pretty(&existing_val)?),
+                true,
+            ))
         }
         "merge_opencode_config" => {
             let existing_raw = fs::read_to_string(existing_path)?;
@@ -850,7 +855,10 @@ fn merge_with_existing_if_needed(
                 }
             }
 
-            Ok((format!("{}\n", serde_json::to_string_pretty(&existing_val)?), true))
+            Ok((
+                format!("{}\n", serde_json::to_string_pretty(&existing_val)?),
+                true,
+            ))
         }
         "merge_cursor_hooks" => {
             let existing_raw = fs::read_to_string(existing_path)?;
@@ -886,7 +894,10 @@ fn merge_with_existing_if_needed(
                     }
                 }
             }
-            Ok((format!("{}\n", serde_json::to_string_pretty(&existing_val)?), true))
+            Ok((
+                format!("{}\n", serde_json::to_string_pretty(&existing_val)?),
+                true,
+            ))
         }
         "merge_claude_hooks" => {
             let existing_raw = fs::read_to_string(existing_path)?;
@@ -918,7 +929,10 @@ fn merge_with_existing_if_needed(
                     }
                 }
             }
-            Ok((format!("{}\n", serde_json::to_string_pretty(&existing_val)?), true))
+            Ok((
+                format!("{}\n", serde_json::to_string_pretty(&existing_val)?),
+                true,
+            ))
         }
         "merge_toml_mcp_servers" => {
             let existing_raw = fs::read_to_string(existing_path)?;
@@ -1234,7 +1248,13 @@ mod tests {
         let dot_codex = fake_home.path().join(".codex");
         let opencode_cfg = fake_home.path().join(".config").join("opencode");
         let appdata = fake_home.path().join("AppData").join("Roaming");
-        for d in [&dot_cursor, &dot_claude, &dot_codex, &opencode_cfg, &appdata] {
+        for d in [
+            &dot_cursor,
+            &dot_claude,
+            &dot_codex,
+            &opencode_cfg,
+            &appdata,
+        ] {
             fs::create_dir_all(d).expect("mkdir forbidden");
         }
 

@@ -151,7 +151,8 @@ impl SessionJournal {
         let mut conn = self.lock_conn()?;
         let event_seq = with_lock_retry("failed to append journal event", || {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let seq = insert_sanitized_event(&tx, scope, &sanitized, &recorded_at, recorded_unix_ms)?;
+            let seq =
+                insert_sanitized_event(&tx, scope, &sanitized, &recorded_at, recorded_unix_ms)?;
             tx.commit()?;
             Ok(seq)
         })?;
@@ -304,7 +305,8 @@ impl SessionJournal {
                 None
             } else {
                 let redacted = self.config.secret_guard.redact_str(trimmed);
-                let (bounded, _) = truncate_str_utf8_boundary(&redacted, self.config.max_note_bytes);
+                let (bounded, _) =
+                    truncate_str_utf8_boundary(&redacted, self.config.max_note_bytes);
                 Some(bounded.to_string())
             }
         });
@@ -356,9 +358,8 @@ impl SessionJournal {
                 stats,
             };
 
-            let snapshot_json = serde_json::to_string(&checkpoint).map_err(|ser_err| {
-                rusqlite::Error::ToSqlConversionFailure(Box::new(ser_err))
-            })?;
+            let snapshot_json = serde_json::to_string(&checkpoint)
+                .map_err(|ser_err| rusqlite::Error::ToSqlConversionFailure(Box::new(ser_err)))?;
             let persisted_checkpoint: SessionCheckpoint = serde_json::from_str(&snapshot_json)
                 .map_err(|de_err| rusqlite::Error::ToSqlConversionFailure(Box::new(de_err)))?;
 
@@ -465,7 +466,11 @@ impl SessionJournal {
     /// Computes aggregate [`SessionStats`] for `context_stats`, scoped either to `scope.session_id`
     /// (`all_sessions_in_workspace == false`) or across every session in `scope.workspace_scope_id`
     /// (`all_sessions_in_workspace == true`).
-    pub fn stats(&self, scope: &BoundScope, all_sessions_in_workspace: bool) -> Result<SessionStats> {
+    pub fn stats(
+        &self,
+        scope: &BoundScope,
+        all_sessions_in_workspace: bool,
+    ) -> Result<SessionStats> {
         WorkspaceScopeId::parse(scope.workspace_scope_id.as_str())?;
         SessionId::parse(scope.session_id.as_str())?;
 
@@ -475,7 +480,11 @@ impl SessionJournal {
     }
 
     /// Lists up to `limit` most recent events in `scope` ordered from oldest-to-newest within the window.
-    pub fn list_recent_events(&self, scope: &BoundScope, limit: usize) -> Result<Vec<RecordedEvent>> {
+    pub fn list_recent_events(
+        &self,
+        scope: &BoundScope,
+        limit: usize,
+    ) -> Result<Vec<RecordedEvent>> {
         WorkspaceScopeId::parse(scope.workspace_scope_id.as_str())?;
         SessionId::parse(scope.session_id.as_str())?;
         if limit == 0 {
@@ -542,7 +551,11 @@ impl SessionJournal {
     }
 
     /// Administrative TTL pruning for expired events and checkpoints inside `caller_scope.workspace_scope_id`.
-    pub fn prune_expired(&self, caller_scope: &BoundScope, ttl_secs: u64) -> Result<JournalPruneReport> {
+    pub fn prune_expired(
+        &self,
+        caller_scope: &BoundScope,
+        ttl_secs: u64,
+    ) -> Result<JournalPruneReport> {
         let now_ms = Utc::now().timestamp_millis();
         let ttl_ms = i64::try_from(ttl_secs.saturating_mul(1_000)).unwrap_or(i64::MAX);
         let cutoff_unix_ms = now_ms.saturating_sub(ttl_ms);
@@ -783,7 +796,9 @@ fn insert_sanitized_event(
     Ok(sql_to_u64(row_id))
 }
 
-fn decode_event_row(row: &rusqlite::Row<'_>) -> std::result::Result<Result<RecordedEvent>, rusqlite::Error> {
+fn decode_event_row(
+    row: &rusqlite::Row<'_>,
+) -> std::result::Result<Result<RecordedEvent>, rusqlite::Error> {
     let seq_raw: i64 = row.get(0)?;
     let ws_raw: String = row.get(1)?;
     let sess_raw: String = row.get(2)?;
@@ -848,8 +863,7 @@ fn decode_event_row(row: &rusqlite::Row<'_>) -> std::result::Result<Result<Recor
             denial_code,
             denial_reason,
             failure_identifiers,
-            search_hit_count: search_hits_raw
-                .map(|c| usize::try_from(c.max(0)).unwrap_or(0)),
+            search_hit_count: search_hits_raw.map(|c| usize::try_from(c.max(0)).unwrap_or(0)),
             latency_ms: latency_raw.map(sql_to_u64),
         })
     })();
@@ -901,7 +915,9 @@ fn load_session_events(
     let mut out = Vec::new();
     for item in mapped {
         let ev_res = item?;
-        let ev = ev_res.map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+        let ev = ev_res.map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+        })?;
         out.push(ev);
     }
     Ok(out)
@@ -972,9 +988,7 @@ fn query_stats_on_conn(
     };
 
     let agg: AggTuple = if all_sessions_in_workspace {
-        let sql = format!(
-            "SELECT {SELECT_COLS} FROM journal_events WHERE workspace_scope_id = ?1"
-        );
+        let sql = format!("SELECT {SELECT_COLS} FROM journal_events WHERE workspace_scope_id = ?1");
         conn.query_row(&sql, params![scope.workspace_scope_id.as_str()], read_tuple)?
     } else {
         let sql = format!(
@@ -1213,9 +1227,9 @@ fn classify_check_family(reducer_id: Option<&str>, command_summary: &str) -> Str
     let lower = command_summary.trim().to_ascii_lowercase();
     let parts: Vec<&str> = lower.split_whitespace().collect();
     match parts.as_slice() {
-        ["cargo", "test" | "nextest", ..] | ["pytest", ..] | ["npm" | "pnpm" | "yarn", "test", ..] => {
-            "test_suite".to_string()
-        }
+        ["cargo", "test" | "nextest", ..]
+        | ["pytest", ..]
+        | ["npm" | "pnpm" | "yarn", "test", ..] => "test_suite".to_string(),
         ["cargo", "check" | "build" | "clippy", ..] | ["rustc", ..] | ["tsc", ..] => {
             "compiler_diagnostics".to_string()
         }

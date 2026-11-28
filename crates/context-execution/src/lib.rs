@@ -340,8 +340,7 @@ mod tests {
             .expect_err("curl --upload-file must still be blocked");
         assert_eq!(upload_err.error_code(), "EXECUTION_DENIED");
 
-        let upload_enabled_gate =
-            ExecutionGate::new(curl_policy).with_allow_network_uploads(true);
+        let upload_enabled_gate = ExecutionGate::new(curl_policy).with_allow_network_uploads(true);
         upload_enabled_gate
             .authorize_with_env(
                 &scope,

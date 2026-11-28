@@ -15,8 +15,10 @@ use crate::common::{
 };
 
 static DIFF_GIT_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^diff --(?:git a/(?P<a_path>.+?) b/(?P<b_path>.+)|(?:cc|combined) (?P<c_path>.+))$")
-        .expect("valid DIFF_GIT_RE")
+    Regex::new(
+        r"^diff --(?:git a/(?P<a_path>.+?) b/(?P<b_path>.+)|(?:cc|combined) (?P<c_path>.+))$",
+    )
+    .expect("valid DIFF_GIT_RE")
 });
 
 static HUNK_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -154,18 +156,18 @@ pub(crate) fn reduce_git_output(
         }
 
         if let Some(caps) = DIFF_GIT_RE.captures(line) {
-            let display_path = if let (Some(a), Some(b)) = (caps.name("a_path"), caps.name("b_path"))
-            {
-                if a.as_str() == b.as_str() {
-                    b.as_str().to_string()
+            let display_path =
+                if let (Some(a), Some(b)) = (caps.name("a_path"), caps.name("b_path")) {
+                    if a.as_str() == b.as_str() {
+                        b.as_str().to_string()
+                    } else {
+                        format!("{} -> {}", a.as_str(), b.as_str())
+                    }
+                } else if let Some(c) = caps.name("c_path") {
+                    c.as_str().to_string()
                 } else {
-                    format!("{} -> {}", a.as_str(), b.as_str())
-                }
-            } else if let Some(c) = caps.name("c_path") {
-                c.as_str().to_string()
-            } else {
-                line.to_string()
-            };
+                    line.to_string()
+                };
 
             let file_start = line_no;
             let mut change_note: Option<String> = None;
@@ -202,7 +204,8 @@ pub(crate) fn reduce_git_output(
                     // Skip git blob index & file-marker boilerplate
                 } else if let Some(hc) = HUNK_HEADER_RE.captures(dl) {
                     if let Some(prev_hunk) = hunks.last_mut() {
-                        prev_hunk.raw_end_line = dl_no.saturating_sub(1).max(prev_hunk.raw_start_line);
+                        prev_hunk.raw_end_line =
+                            dl_no.saturating_sub(1).max(prev_hunk.raw_start_line);
                     }
                     hunks.push(DiffHunk {
                         header: hc["hdr"].to_string(),
@@ -225,7 +228,10 @@ pub(crate) fn reduce_git_output(
                 last_hunk.raw_end_line = file_end.max(last_hunk.raw_start_line);
             }
 
-            if added == 0 && removed == 0 && change_note.is_none() && (eof_newline_note || raw_cr_present)
+            if added == 0
+                && removed == 0
+                && change_note.is_none()
+                && (eof_newline_note || raw_cr_present)
             {
                 change_note = Some("line-ending/eof-newline".to_string());
             }
@@ -251,7 +257,10 @@ pub(crate) fn reduce_git_output(
     if exit_failed {
         for ln in stderr_text.lines().chain(stdout_text.lines()) {
             let trimmed = ln.trim();
-            if trimmed.starts_with("fatal:") || trimmed.starts_with("error:") || trimmed.starts_with("CONFLICT ") {
+            if trimmed.starts_with("fatal:")
+                || trimmed.starts_with("error:")
+                || trimmed.starts_with("CONFLICT ")
+            {
                 failure_identifiers.push(trimmed.to_string());
             }
         }
@@ -336,7 +345,10 @@ pub(crate) fn reduce_git_output(
         ));
     }
     if commits.len() > commit_cap {
-        out_lines.push(format!("... +{} earlier commit(s)", commits.len() - commit_cap));
+        out_lines.push(format!(
+            "... +{} earlier commit(s)",
+            commits.len() - commit_cap
+        ));
     }
 
     // Render per-file diffstats + hunk headers with exact raw line ranges
@@ -383,7 +395,10 @@ pub(crate) fn reduce_git_output(
         }
     }
     if files.len() > file_cap {
-        out_lines.push(format!("... +{} additional file(s)", files.len() - file_cap));
+        out_lines.push(format!(
+            "... +{} additional file(s)",
+            files.len() - file_cap
+        ));
     }
 
     let omitted = !files.is_empty() || total_raw_lines > out_lines.len();
@@ -402,7 +417,12 @@ pub(crate) fn reduce_git_output(
         );
         out_lines.push(format!(
             "omitted: {total_raw_lines} raw line(s) | {}",
-            format_recovery_hint(artifact_id, originals_available, primary_stream, first_range)
+            format_recovery_hint(
+                artifact_id,
+                originals_available,
+                primary_stream,
+                first_range
+            )
         ));
     }
 

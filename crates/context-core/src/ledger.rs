@@ -144,7 +144,10 @@ impl TransformationLedger {
             && trimmed.contains("\"transformations\"")
         {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                if val.get("schema_version").and_then(serde_json::Value::as_u64) == Some(1)
+                if val
+                    .get("schema_version")
+                    .and_then(serde_json::Value::as_u64)
+                    == Some(1)
                     && val
                         .get("artifact_id")
                         .and_then(serde_json::Value::as_str)
@@ -173,8 +176,7 @@ impl TransformationLedger {
             return false;
         }
         let mut parts = inner.split_whitespace();
-        let (Some(art_kv), Some(transforms_kv), None) =
-            (parts.next(), parts.next(), parts.next())
+        let (Some(art_kv), Some(transforms_kv), None) = (parts.next(), parts.next(), parts.next())
         else {
             return false;
         };

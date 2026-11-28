@@ -150,8 +150,8 @@ pub(crate) fn open_and_configure_file(path: &Path) -> Result<Connection> {
         }
     }
 
-    let mut conn =
-        Connection::open(path).map_err(|err| map_sql_err("failed to open search database", &err))?;
+    let mut conn = Connection::open(path)
+        .map_err(|err| map_sql_err("failed to open search database", &err))?;
     configure_connection(&mut conn, false)?;
     run_migrations(&mut conn)?;
     Ok(conn)
@@ -176,7 +176,9 @@ fn configure_connection(conn: &mut Connection, is_in_memory: bool) -> Result<()>
              PRAGMA temp_store = MEMORY;
              PRAGMA synchronous = NORMAL;",
         )?;
-        conn.query_row("PRAGMA journal_mode = WAL;", [], |row| row.get::<_, String>(0))
+        conn.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+            row.get::<_, String>(0)
+        })
     })?;
 
     if !is_in_memory && !journal_mode.eq_ignore_ascii_case("wal") {
@@ -272,7 +274,9 @@ pub(crate) fn run_health_check(
         .is_ok();
 
     let total_artifacts: i64 = conn
-        .query_row("SELECT COUNT(*) FROM search_artifacts", [], |row| row.get(0))
+        .query_row("SELECT COUNT(*) FROM search_artifacts", [], |row| {
+            row.get(0)
+        })
         .map_err(|err| map_sql_err("failed to count search_artifacts", &err))?;
 
     let total_chunks: i64 = conn

@@ -136,8 +136,7 @@ pub(crate) fn reduce_structured_json(
         truncated_depth: false,
     };
     let structural = render_node_with_stats(&parsed, 0, 4, 3, true, &mut stats);
-    let was_compacted =
-        stats.omitted_items > 0 || stats.omitted_keys > 0 || stats.truncated_depth;
+    let was_compacted = stats.omitted_items > 0 || stats.omitted_keys > 0 || stats.truncated_depth;
 
     // Never-worse check: if small JSON had zero elided items/keys/depth and sanitized raw text
     // is already smaller than the structural summary (and within budget), keep the concise raw text!
@@ -171,7 +170,8 @@ pub(crate) fn reduce_structured_json(
     out_lines.push(structural);
 
     let total_lines = count_lines(text);
-    let omitted = was_compacted || total_lines > out_lines.len() || text.len() > budget.max_view_bytes;
+    let omitted =
+        was_compacted || total_lines > out_lines.len() || text.len() > budget.max_view_bytes;
     if omitted {
         let range = if total_lines > 1 {
             RecoveryRange::Lines {

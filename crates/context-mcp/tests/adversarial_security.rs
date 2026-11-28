@@ -9,9 +9,7 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use context_core::{
-    ArtifactEnvelope, BoundScope, SecretPolicy, SecretPolicyMode, StreamKind,
-};
+use context_core::{ArtifactEnvelope, BoundScope, SecretPolicy, SecretPolicyMode, StreamKind};
 use context_mcp::{
     run_server_over_streams, ContextEngine, EngineConfig, EngineStatsReport, GetRangeSelector,
     GetSliceRequest, IndexDocumentRequest, IndexSource, SearchQueryOutcome, ToolErrorPayload,
@@ -116,9 +114,8 @@ async fn symlink_junction_escape_traversal_and_sensitive_file_denials() {
         status.success()
     };
     #[cfg(unix)]
-    let junction_created = {
-        std::os::unix::fs::symlink(outside.path(), ws.path().join("escaped_junction")).is_ok()
-    };
+    let junction_created =
+        { std::os::unix::fs::symlink(outside.path(), ws.path().join("escaped_junction")).is_ok() };
     assert!(
         junction_created,
         "expected NTFS junction / directory symlink creation to succeed"
@@ -343,10 +340,7 @@ async fn secret_leakage_zero_exposure_across_views_search_fts5_and_journal_sqlit
         );
     }
     let idx_env: ArtifactEnvelope = serde_json::from_str(idx_text).expect("parse idx_env");
-    assert!(idx_env
-        .view
-        .safe_excerpt
-        .contains("E_DB_REPLICA_LAG_9001"));
+    assert!(idx_env.view.safe_excerpt.contains("E_DB_REPLICA_LAG_9001"));
 
     // 3. Persist checkpoint with a secret accidentally pasted in `note`
     send_rpc(
@@ -484,30 +478,22 @@ print(json.dumps(out))
 
     let table_dump_str = String::from_utf8(py_out.stdout).expect("utf8 dump");
     let table_dump: Value = serde_json::from_str(&table_dump_str).expect("parse table dump");
-    assert!(
-        !table_dump["search_chunks"]
-            .as_array()
-            .expect("arr")
-            .is_empty()
-    );
-    assert!(
-        !table_dump["search_chunks_fts"]
-            .as_array()
-            .expect("arr")
-            .is_empty()
-    );
-    assert!(
-        !table_dump["journal_events"]
-            .as_array()
-            .expect("arr")
-            .is_empty()
-    );
-    assert!(
-        !table_dump["journal_checkpoints"]
-            .as_array()
-            .expect("arr")
-            .is_empty()
-    );
+    assert!(!table_dump["search_chunks"]
+        .as_array()
+        .expect("arr")
+        .is_empty());
+    assert!(!table_dump["search_chunks_fts"]
+        .as_array()
+        .expect("arr")
+        .is_empty());
+    assert!(!table_dump["journal_events"]
+        .as_array()
+        .expect("arr")
+        .is_empty());
+    assert!(!table_dump["journal_checkpoints"]
+        .as_array()
+        .expect("arr")
+        .is_empty());
 
     for secret in raw_secrets {
         assert!(
@@ -914,7 +900,10 @@ async fn command_injection_shell_denial_prompt_injection_22mb_flood_timeout_and_
     .expect("hung envelope");
     assert!(!hung_env.capture.complete);
     assert!(hung_env.view.safe_excerpt.contains("TIMED_OUT"));
-    assert!(hung_env.view.safe_excerpt.contains("partial_before_hang_77"));
+    assert!(hung_env
+        .view
+        .safe_excerpt
+        .contains("partial_before_hang_77"));
 
     // 5. Corrupted `.zst` blob & substituted-plaintext SHA-256 tamper rejection
     send_rpc(

@@ -9,7 +9,9 @@ use context_capture::CaptureCancelToken;
 use context_core::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::io::{
+    AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader,
+};
 use tokio::sync::Mutex as AsyncMutex;
 use tokio::task::JoinSet;
 

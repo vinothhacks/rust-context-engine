@@ -153,7 +153,9 @@ fn configure_connection(conn: &mut Connection, is_in_memory: bool) -> Result<()>
              PRAGMA temp_store = MEMORY;
              PRAGMA synchronous = NORMAL;",
         )?;
-        conn.query_row("PRAGMA journal_mode = WAL;", [], |row| row.get::<_, String>(0))
+        conn.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+            row.get::<_, String>(0)
+        })
     })?;
 
     if !is_in_memory && !journal_mode.eq_ignore_ascii_case("wal") {
@@ -246,7 +248,9 @@ pub(crate) fn run_health_check(
         .map_err(|err| map_sql_err("failed to count journal_events", &err))?;
 
     let total_checkpoints: i64 = conn
-        .query_row("SELECT COUNT(*) FROM journal_checkpoints", [], |row| row.get(0))
+        .query_row("SELECT COUNT(*) FROM journal_checkpoints", [], |row| {
+            row.get(0)
+        })
         .map_err(|err| map_sql_err("failed to count journal_checkpoints", &err))?;
 
     let db_size_bytes = match db_path {

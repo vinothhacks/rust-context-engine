@@ -61,7 +61,9 @@ mod tests {
         );
 
         let stdout_data = b"line 1: alpha\nline 2: beta\nline 3: gamma\nline 4: delta\n";
-        let stderr_binary = &[0xff, 0xfe, 0x00, b'B', b'I', b'N', b'\n', b't', b'a', b'i', b'l'];
+        let stderr_binary = &[
+            0xff, 0xfe, 0x00, b'B', b'I', b'N', b'\n', b't', b'a', b'i', b'l',
+        ];
 
         let stored = store
             .put_artifact_streams(
@@ -276,8 +278,7 @@ mod tests {
 
     #[test]
     fn enforces_secret_guard_redact_quarantine_and_deny_policies() {
-        let secret_out =
-            b"normal log\nGITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyzABCD\n";
+        let secret_out = b"normal log\nGITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyzABCD\n";
 
         // 1. Default RedactBeforeIndex: persists redacted text, never raw secret
         let ws_redact = TempDir::new().expect("ws_redact");
@@ -289,7 +290,11 @@ mod tests {
                 PutArtifactRequest {
                     artifact_id: None,
                     source: sample_command_source(),
-                    streams: vec![ArtifactStreamInput::new(StreamKind::Stdout, secret_out, false)],
+                    streams: vec![ArtifactStreamInput::new(
+                        StreamKind::Stdout,
+                        secret_out,
+                        false,
+                    )],
                     capture_complete: true,
                     view: None,
                 },
@@ -326,7 +331,11 @@ mod tests {
                 PutArtifactRequest {
                     artifact_id: None,
                     source: sample_command_source(),
-                    streams: vec![ArtifactStreamInput::new(StreamKind::Stdout, secret_out, false)],
+                    streams: vec![ArtifactStreamInput::new(
+                        StreamKind::Stdout,
+                        secret_out,
+                        false,
+                    )],
                     capture_complete: true,
                     view: None,
                 },
@@ -518,8 +527,8 @@ mod tests {
             max_preview_bytes: 32,
             ..ReductionBudget::default()
         };
-        let store =
-            BlobStore::open_with_config(&scope, SecretGuard::default(), tight_budget).expect("open");
+        let store = BlobStore::open_with_config(&scope, SecretGuard::default(), tight_budget)
+            .expect("open");
 
         let megaline = "αβγ🦀".repeat(20); // > 32 UTF-8 bytes on a single line
         let out = store

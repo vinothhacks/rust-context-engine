@@ -20,8 +20,8 @@ const SHELL_INTERPRETERS: &[&str] = &[
 ];
 
 const DEFAULT_ALLOWED_PROGRAMS: &[&str] = &[
-    "cargo", "rustc", "rustup", "git", "pytest", "python", "python3", "node", "npm", "npx",
-    "pnpm", "yarn", "tsc", "go", "rg", "dotnet", "mvn", "gradle",
+    "cargo", "rustc", "rustup", "git", "pytest", "python", "python3", "node", "npm", "npx", "pnpm",
+    "yarn", "tsc", "go", "rg", "dotnet", "mvn", "gradle",
 ];
 
 const DEFAULT_BLOCKED_PROGRAMS: &[&str] = &[
@@ -163,8 +163,9 @@ impl ExecutionPolicyConfig {
         if trimmed.contains('/') || trimmed.contains('\\') || trimmed.contains(':') {
             return Err(ContextError::ExecutionDenied {
                 program: program_raw.clone(),
-                reason: "executable must be a bare allowlisted program name without path separators"
-                    .to_string(),
+                reason:
+                    "executable must be a bare allowlisted program name without path separators"
+                        .to_string(),
             });
         }
 
@@ -413,8 +414,7 @@ fn validate_subcommand_safety(base: &str, args: &[String], raw_program: &str) ->
                 reason: "'git push --force' is blocked by execution policy".to_string(),
             });
         }
-        if subcmd == Some("checkout")
-            && lower_args.windows(2).any(|w| w[0] == "--" && w[1] == ".")
+        if subcmd == Some("checkout") && lower_args.windows(2).any(|w| w[0] == "--" && w[1] == ".")
         {
             return Err(ContextError::ExecutionDenied {
                 program: raw_program.to_string(),
@@ -433,8 +433,9 @@ fn validate_subcommand_safety(base: &str, args: &[String], raw_program: &str) ->
     if has_recurse && has_force {
         return Err(ContextError::ExecutionDenied {
             program: raw_program.to_string(),
-            reason: "recursive force flags (-Recurse -Force) are blocked by workspace safety policy"
-                .to_string(),
+            reason:
+                "recursive force flags (-Recurse -Force) are blocked by workspace safety policy"
+                    .to_string(),
         });
     }
 

@@ -501,8 +501,7 @@ impl BlobStore {
         stream: StreamKind,
         range: ByteRange,
     ) -> Result<ByteSlicePage> {
-        let validated_range =
-            ByteRange::new(range.start, range.end, self.budget.max_get_bytes)?;
+        let validated_range = ByteRange::new(range.start, range.end, self.budget.max_get_bytes)?;
         let mut manifest = self.load_verified_manifest(caller_scope, artifact_id)?;
         let loaded = self.load_and_verify_stream(&manifest, stream)?;
 
@@ -700,11 +699,7 @@ impl BlobStore {
             let ttl_ms = ttl_secs.saturating_mul(1_000);
             for (idx, item) in manifests.iter().enumerate() {
                 let age_ms = now_ms.saturating_sub(item.manifest.created_at_unix_ms);
-                let expired = if ttl_ms == 0 {
-                    true
-                } else {
-                    age_ms > ttl_ms
-                };
+                let expired = if ttl_ms == 0 { true } else { age_ms > ttl_ms };
                 if expired {
                     evicted_indices.insert(idx);
                     report.expired_artifacts += 1;
@@ -728,7 +723,8 @@ impl BlobStore {
             });
 
             for candidate_idx in candidate_order {
-                let live_bytes = compute_live_footprint(&manifests, &evicted_indices, &blob_inventory);
+                let live_bytes =
+                    compute_live_footprint(&manifests, &evicted_indices, &blob_inventory);
                 if live_bytes <= max_bytes {
                     break;
                 }
@@ -898,12 +894,11 @@ impl BlobStore {
             })?;
 
         // Verify SHA-256 round-trip of compressed frame before committing to store.
-        let verify_decoded =
-            zstd::stream::decode_all(Cursor::new(&compressed)).map_err(|err| {
-                ContextError::Storage {
-                    message: format!("zstd pre-commit verification failed: {err}"),
-                }
-            })?;
+        let verify_decoded = zstd::stream::decode_all(Cursor::new(&compressed)).map_err(|err| {
+            ContextError::Storage {
+                message: format!("zstd pre-commit verification failed: {err}"),
+            }
+        })?;
         let verify_sha = sha256_hex(&verify_decoded);
         if verify_sha != expected_sha256 {
             return Err(ContextError::IntegrityMismatch {
@@ -1049,9 +1044,7 @@ impl BlobStore {
                 if let Some(sref) = manifest.streams.iter().find(|s| s.stream == target) {
                     let part = self.load_single_stream_ref(&manifest.artifact_id, sref)?;
                     exact_raw_preserved &= part.exact_raw_preserved;
-                    if !combined.is_empty()
-                        && !combined.ends_with(b"\n")
-                        && !part.bytes.is_empty()
+                    if !combined.is_empty() && !combined.ends_with(b"\n") && !part.bytes.is_empty()
                     {
                         combined.push(b'\n');
                     }
@@ -1146,13 +1139,12 @@ impl BlobStore {
             _ => ContextError::Io(err),
         })?;
 
-        let decompressed =
-            zstd::stream::decode_all(Cursor::new(&compressed)).map_err(|err| {
-                ContextError::IntegrityMismatch {
-                    expected_sha256: expected_sha256.to_string(),
-                    actual_sha256: format!("<corrupt-zstd-frame: {err}>"),
-                }
-            })?;
+        let decompressed = zstd::stream::decode_all(Cursor::new(&compressed)).map_err(|err| {
+            ContextError::IntegrityMismatch {
+                expected_sha256: expected_sha256.to_string(),
+                actual_sha256: format!("<corrupt-zstd-frame: {err}>"),
+            }
+        })?;
 
         let actual_sha256 = sha256_hex(&decompressed);
         if actual_sha256 != expected_sha256 {
@@ -1290,10 +1282,10 @@ fn build_capture_summary(
     let stdout_ref = streams.iter().find(|s| s.stream == StreamKind::Stdout);
     let stderr_ref = streams.iter().find(|s| s.stream == StreamKind::Stderr);
 
-    let stdout_sha256 = stdout_ref
-        .map_or_else(|| EMPTY_SHA256_HEX.to_string(), |s| s.raw_sha256.clone());
-    let stderr_sha256 = stderr_ref
-        .map_or_else(|| EMPTY_SHA256_HEX.to_string(), |s| s.raw_sha256.clone());
+    let stdout_sha256 =
+        stdout_ref.map_or_else(|| EMPTY_SHA256_HEX.to_string(), |s| s.raw_sha256.clone());
+    let stderr_sha256 =
+        stderr_ref.map_or_else(|| EMPTY_SHA256_HEX.to_string(), |s| s.raw_sha256.clone());
     let stdout_bytes = stdout_ref.map_or(0, |s| s.raw_bytes);
     let stderr_bytes = stderr_ref.map_or(0, |s| s.raw_bytes);
     let stdout_truncated = stdout_ref.is_some_and(|s| s.truncated);
@@ -1309,8 +1301,10 @@ fn build_capture_summary(
         (StreamEncoding::Utf8, StreamEncoding::Utf8) => StreamEncoding::Utf8,
     };
 
-    let originals_available =
-        !streams.is_empty() && streams.iter().all(|s| s.originals_available && !s.quarantined);
+    let originals_available = !streams.is_empty()
+        && streams
+            .iter()
+            .all(|s| s.originals_available && !s.quarantined);
 
     CaptureSummary {
         stdout_sha256,
@@ -1399,7 +1393,11 @@ fn sanitize_artifact_source(
 }
 
 fn validate_sha256_hex(sha256: &str) -> Result<()> {
-    if sha256.len() != 64 || !sha256.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
+    if sha256.len() != 64
+        || !sha256
+            .bytes()
+            .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+    {
         return Err(ContextError::InvalidConfig {
             field: "sha256",
             reason: format!("expected 64 lowercase hex characters, got '{sha256}'"),
@@ -1413,12 +1411,10 @@ fn count_lines_str(s: &str) -> usize {
 }
 
 fn current_unix_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or_else(
-            |_| u64::try_from(Utc::now().timestamp_millis().max(0)).unwrap_or(0),
-            |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX),
-        )
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or_else(
+        |_| u64::try_from(Utc::now().timestamp_millis().max(0)).unwrap_or(0),
+        |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX),
+    )
 }
 
 #[allow(dead_code)]

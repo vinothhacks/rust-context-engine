@@ -15,7 +15,9 @@ pub mod index;
 pub mod schema;
 
 pub use chunker::{chunk_sanitized_text, sanitize_fts5_query, ChunkConfig, TextChunk};
-pub use context_core::{ArtifactId, BoundScope, RecoveryHandle, SessionId, StreamKind, WorkspaceScopeId};
+pub use context_core::{
+    ArtifactId, BoundScope, RecoveryHandle, SessionId, StreamKind, WorkspaceScopeId,
+};
 pub use index::{
     IndexArtifactRequest, IndexStats, IndexStreamRequest, PruneReport, SearchConfig, SearchHit,
     SearchIndex, StreamInput,
@@ -78,7 +80,12 @@ mod tests {
             .expect("insert sibling component migration");
         let reopened_after_sibling =
             SearchIndex::open_for_scope(&scope).expect("reopen alongside sibling component");
-        assert!(reopened_after_sibling.health_check().expect("health").healthy);
+        assert!(
+            reopened_after_sibling
+                .health_check()
+                .expect("health")
+                .healthy
+        );
     }
 
     #[test]
@@ -494,7 +501,12 @@ mod tests {
         assert_eq!(diag_hits.len(), 1);
         assert_eq!(diag_hits[0].artifact_id, art_a);
 
-        assert!(index.health_check().expect("health after hostile queries").healthy);
+        assert!(
+            index
+                .health_check()
+                .expect("health after hostile queries")
+                .healthy
+        );
     }
 
     #[test]
@@ -544,7 +556,12 @@ mod tests {
             RecoveryHandle::for_artifact(art_env.clone(), Some(32_768)),
         );
         index
-            .index_envelope_streams(&scope, &envelope, Some("stdout unique_envelope_token\n"), None)
+            .index_envelope_streams(
+                &scope,
+                &envelope,
+                Some("stdout unique_envelope_token\n"),
+                None,
+            )
             .expect("index envelope");
 
         index
@@ -582,7 +599,9 @@ mod tests {
         );
 
         // Remove `art_del` and verify FTS5 + relational parity.
-        assert!(index.remove_artifact(&scope, &art_del).expect("remove art_del"));
+        assert!(index
+            .remove_artifact(&scope, &art_del)
+            .expect("remove art_del"));
         assert!(!index
             .remove_artifact(&scope, &art_del)
             .expect("idempotent second remove"));

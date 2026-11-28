@@ -133,7 +133,9 @@ mod tests {
         )
         .await;
         let list_resp = recv_newline_rpc(&mut client_buf).await;
-        let tools = list_resp["result"]["tools"].as_array().expect("tools array");
+        let tools = list_resp["result"]["tools"]
+            .as_array()
+            .expect("tools array");
         assert_eq!(tools.len(), 7);
         for t in tools {
             assert_eq!(t["inputSchema"]["additionalProperties"], false);
@@ -337,10 +339,7 @@ mod tests {
         let raw_decoded = base64::engine::general_purpose::STANDARD
             .decode(get_bytes_val["base64_bytes"].as_str().expect("b64"))
             .expect("decode b64");
-        assert_eq!(
-            sha256_hex(&raw_decoded),
-            run_env.capture.stderr_sha256
-        );
+        assert_eq!(sha256_hex(&raw_decoded), run_env.capture.stderr_sha256);
 
         // 7. `context_resume` with `create_checkpoint: true`
         send_newline_rpc(
@@ -429,8 +428,7 @@ mod tests {
     #[tokio::test]
     async fn auto_detects_and_replies_with_content_length_framing() {
         let ws = TempDir::new().expect("workspace");
-        let engine =
-            Arc::new(ContextEngine::open_workspace(ws.path(), None).expect("open engine"));
+        let engine = Arc::new(ContextEngine::open_workspace(ws.path(), None).expect("open engine"));
 
         let (mut client_wr, server_rd) = tokio::io::duplex(64 * 1024);
         let (server_wr, client_rd) = tokio::io::duplex(64 * 1024);
@@ -495,9 +493,8 @@ mod tests {
         let ws_b = TempDir::new().expect("ws_b");
         fs::write(ws_a.path().join(".env"), "SECRET_KEY=topsecret\n").expect("write .env");
 
-        let engine_a = Arc::new(
-            ContextEngine::open_workspace(ws_a.path(), Some("sec-sess")).expect("open A"),
-        );
+        let engine_a =
+            Arc::new(ContextEngine::open_workspace(ws_a.path(), Some("sec-sess")).expect("open A"));
         let engine_b =
             ContextEngine::open_workspace(ws_b.path(), Some("sec-sess")).expect("open B");
         let foreign_art = engine_b
@@ -657,12 +654,10 @@ mod tests {
         )
         .await;
 
-        let cancelled_resp = tokio::time::timeout(
-            Duration::from_secs(5),
-            recv_newline_rpc(&mut client_buf),
-        )
-        .await
-        .expect("cancelled command must finish promptly");
+        let cancelled_resp =
+            tokio::time::timeout(Duration::from_secs(5), recv_newline_rpc(&mut client_buf))
+                .await
+                .expect("cancelled command must finish promptly");
         assert_eq!(cancelled_resp["id"], "slow-1");
         let cancelled_env: ArtifactEnvelope = serde_json::from_str(
             cancelled_resp["result"]["content"][0]["text"]

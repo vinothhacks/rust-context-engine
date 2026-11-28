@@ -23,10 +23,8 @@ static TEST_RESULT_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static NEXTEST_SUMMARY_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"^\s*Summary\s+\[\s*[0-9.]+s\]\s+(?P<run>[0-9]+)\s+tests?\s+run:\s+(?P<rest>.+)$",
-    )
-    .expect("valid NEXTEST_SUMMARY_RE")
+    Regex::new(r"^\s*Summary\s+\[\s*[0-9.]+s\]\s+(?P<run>[0-9]+)\s+tests?\s+run:\s+(?P<rest>.+)$")
+        .expect("valid NEXTEST_SUMMARY_RE")
 });
 
 static NEXTEST_FAIL_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -37,7 +35,8 @@ static NEXTEST_FAIL_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static LIBTEST_FAILED_LINE_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^test\s+(?P<name>.+?)\s+\.\.\.\s+FAILED\s*$").expect("valid LIBTEST_FAILED_LINE_RE")
+    Regex::new(r"^test\s+(?P<name>.+?)\s+\.\.\.\s+FAILED\s*$")
+        .expect("valid LIBTEST_FAILED_LINE_RE")
 });
 
 static FAILURE_BLOCK_HEADER_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -138,8 +137,8 @@ pub(crate) fn reduce_cargo_test(
                 // Distinguish the first `failures:` header (followed by `---- name stdout ----`)
                 // from the bottom `failures:` list (followed by indented test names).
                 let next_non_empty = lines[idx + 1..].iter().find(|l| !l.trim().is_empty());
-                in_failures_list = next_non_empty
-                    .is_some_and(|next| !FAILURE_BLOCK_HEADER_RE.is_match(next));
+                in_failures_list =
+                    next_non_empty.is_some_and(|next| !FAILURE_BLOCK_HEADER_RE.is_match(next));
                 idx += 1;
                 continue;
             }
