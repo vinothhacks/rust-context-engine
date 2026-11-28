@@ -290,11 +290,8 @@ impl ContextEngine {
             .with_allow_network_uploads(config.allow_network_uploads);
         let reducer = ReducerEngine::new(config.budget.clone(), secret_guard.clone());
 
-        let store = BlobStore::open_with_config(
-            &bound_scope,
-            secret_guard.clone(),
-            config.budget.clone(),
-        )?;
+        let store =
+            BlobStore::open_with_config(&bound_scope, secret_guard.clone(), config.budget.clone())?;
         let search = SearchIndex::open_for_scope_with_config(
             &bound_scope,
             SearchConfig {
@@ -451,18 +448,20 @@ impl ContextEngine {
         };
 
         // Step 5 & Step 6: Classify & Reduce once across both `stdout` and `stderr`, then update manifest view.
-        let reduction = self.reducer.reduce_command_with_input(&CommandReductionInput {
-            argv: &captured.argv,
-            exit_code: captured.exit_code,
-            stdout: &captured.stdout.bytes,
-            stderr: &captured.stderr.bytes,
-            artifact_id: Some(&stored.envelope.artifact_id),
-            originals_available: stored.envelope.capture.originals_available,
-            timed_out: captured.timed_out,
-            stdout_truncated: captured.stdout.truncated,
-            stderr_truncated: captured.stderr.truncated,
-            existing_transforms: &[],
-        });
+        let reduction = self
+            .reducer
+            .reduce_command_with_input(&CommandReductionInput {
+                argv: &captured.argv,
+                exit_code: captured.exit_code,
+                stdout: &captured.stdout.bytes,
+                stderr: &captured.stderr.bytes,
+                artifact_id: Some(&stored.envelope.artifact_id),
+                originals_available: stored.envelope.capture.originals_available,
+                timed_out: captured.timed_out,
+                stdout_truncated: captured.stdout.truncated,
+                stderr_truncated: captured.stderr.truncated,
+                existing_transforms: &[],
+            });
 
         let envelope = self.store.update_artifact_view(
             &scope,
@@ -568,16 +567,18 @@ impl ContextEngine {
         };
 
         // Step 5 & Step 6: Classify & Reduce once, then update manifest view.
-        let reduction = self.reducer.reduce_document_with_input(&DocumentReductionInput {
-            bytes: &doc.stream.bytes,
-            path_relative: doc.path_relative.as_deref(),
-            label: doc.label.as_deref(),
-            media_type: doc.media_type.as_deref(),
-            artifact_id: Some(&stored.envelope.artifact_id),
-            originals_available: stored.envelope.capture.originals_available,
-            truncated: doc.stream.truncated,
-            existing_transforms: &[],
-        });
+        let reduction = self
+            .reducer
+            .reduce_document_with_input(&DocumentReductionInput {
+                bytes: &doc.stream.bytes,
+                path_relative: doc.path_relative.as_deref(),
+                label: doc.label.as_deref(),
+                media_type: doc.media_type.as_deref(),
+                artifact_id: Some(&stored.envelope.artifact_id),
+                originals_available: stored.envelope.capture.originals_available,
+                truncated: doc.stream.truncated,
+                existing_transforms: &[],
+            });
 
         let envelope = self.store.update_artifact_view(
             &scope,
@@ -586,18 +587,18 @@ impl ContextEngine {
         )?;
 
         // Step 7: Index sanitized text into SQLite FTS5.
-        let sanitized_doc =
-            find_sanitized_stream(&stored.sanitized_streams, StreamKind::Document);
-        let index_stats = match self
-            .search
-            .index_envelope_streams(&scope, &envelope, sanitized_doc, None)
-        {
-            Ok(st) => st,
-            Err(err) => {
-                self.record_if_security_denial(&scope, &err, started);
-                return Err(err);
-            }
-        };
+        let sanitized_doc = find_sanitized_stream(&stored.sanitized_streams, StreamKind::Document);
+        let index_stats =
+            match self
+                .search
+                .index_envelope_streams(&scope, &envelope, sanitized_doc, None)
+            {
+                Ok(st) => st,
+                Err(err) => {
+                    self.record_if_security_denial(&scope, &err, started);
+                    return Err(err);
+                }
+            };
 
         // Step 8 & Step 9: Journal & Respond.
         let deduplicated = pre_existing_blob || reduction.already_reduced;
@@ -793,17 +794,14 @@ impl ContextEngine {
         )?;
 
         if req.create_checkpoint {
-            self.journal.create_checkpoint(&scope, req.note.as_deref())?;
+            self.journal
+                .create_checkpoint(&scope, req.note.as_deref())?;
         }
         self.journal.resume(&scope)
     }
 
     /// Computes non-sensitive session or workspace telemetry paired with store footprint stats.
-    pub fn stats(
-        &self,
-        session_id: Option<&str>,
-        all_sessions: bool,
-    ) -> Result<EngineStatsReport> {
+    pub fn stats(&self, session_id: Option<&str>, all_sessions: bool) -> Result<EngineStatsReport> {
         let started = Instant::now();
         let scope = self.resolve_scope(None, session_id, started)?;
         let session = self.journal.stats(&scope, all_sessions)?;
@@ -817,15 +815,15 @@ impl ContextEngine {
         ttl_secs: Option<u64>,
         max_store_bytes: Option<u64>,
     ) -> Result<EnginePruneReport> {
-        let (effective_ttl, effective_max_bytes) = if ttl_secs.is_none() && max_store_bytes.is_none()
-        {
-            (
-                Some(self.budget.retention_ttl_secs),
-                Some(self.budget.max_workspace_store_bytes),
-            )
-        } else {
-            (ttl_secs, max_store_bytes)
-        };
+        let (effective_ttl, effective_max_bytes) =
+            if ttl_secs.is_none() && max_store_bytes.is_none() {
+                (
+                    Some(self.budget.retention_ttl_secs),
+                    Some(self.budget.max_workspace_store_bytes),
+                )
+            } else {
+                (ttl_secs, max_store_bytes)
+            };
 
         // 1. Prune expired/LRU-evicted manifests and unreferenced blobs in `BlobStore`.
         let store_report = self.store.prune(PrunePolicy {

@@ -16,7 +16,9 @@ pub mod journal;
 pub mod model;
 pub mod schema;
 
-pub use context_core::{ArtifactId, BoundScope, RecoveryHandle, SessionId, StreamKind, WorkspaceScopeId};
+pub use context_core::{
+    ArtifactId, BoundScope, RecoveryHandle, SessionId, StreamKind, WorkspaceScopeId,
+};
 pub use journal::{JournalConfig, SessionJournal};
 pub use model::{
     ActiveArtifactHandle, JournalEventInput, JournalEventKind, JournalPruneReport,
@@ -319,9 +321,7 @@ mod tests {
 
         let handles = pack_mid.recovery_handles();
         assert!(!handles.is_empty());
-        assert!(handles
-            .iter()
-            .all(|h| h.tool == RECOVERY_TOOL_CONTEXT_GET));
+        assert!(handles.iter().all(|h| h.tool == RECOVERY_TOOL_CONTEXT_GET));
         // Failing artifacts are prioritized ahead of clean passing artifacts.
         assert!(pack_mid.active_artifacts[0].has_failures);
 
@@ -462,7 +462,10 @@ mod tests {
         assert_eq!(pruned.pruned_checkpoints, 1);
         assert_eq!(pruned.pruned_events, 3); // 2 captures + 1 checkpoint event in ws A
         assert_eq!(
-            journal.stats(&scope_b_s1, true).expect("ws B intact").raw_bytes,
+            journal
+                .stats(&scope_b_s1, true)
+                .expect("ws B intact")
+                .raw_bytes,
             500_000
         );
     }

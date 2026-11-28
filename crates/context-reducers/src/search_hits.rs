@@ -5,9 +5,7 @@
 
 use std::collections::HashMap;
 
-use context_core::{
-    truncate_str_utf8_boundary, ArtifactId, ReductionBudget, StreamKind, ViewKind,
-};
+use context_core::{truncate_str_utf8_boundary, ArtifactId, ReductionBudget, StreamKind, ViewKind};
 
 use crate::common::{
     count_lines, dedup_preserve_order, format_exit_badge, format_recovery_hint, DomainReduction,
@@ -56,7 +54,11 @@ fn format_line_spans(lines: &[usize]) -> String {
     }
 
     if ranges.len() > 8 {
-        format!("{}, ... (+{} spans)", ranges[..8].join(", "), ranges.len() - 8)
+        format!(
+            "{}, ... (+{} spans)",
+            ranges[..8].join(", "),
+            ranges.len() - 8
+        )
     } else {
         ranges.join(", ")
     }

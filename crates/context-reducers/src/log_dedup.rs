@@ -41,18 +41,15 @@ static FATAL_SEV_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static ERROR_SEV_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:^|[\s\[\(:=])(?:ERROR|ERR)(?:[\s\]\):,]|$)")
-        .expect("valid ERROR_SEV_RE")
+    Regex::new(r"(?i)(?:^|[\s\[\(:=])(?:ERROR|ERR)(?:[\s\]\):,]|$)").expect("valid ERROR_SEV_RE")
 });
 
 static WARN_SEV_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:^|[\s\[\(:=])(?:WARN|WARNING)(?:[\s\]\):,]|$)")
-        .expect("valid WARN_SEV_RE")
+    Regex::new(r"(?i)(?:^|[\s\[\(:=])(?:WARN|WARNING)(?:[\s\]\):,]|$)").expect("valid WARN_SEV_RE")
 });
 
 static INFO_SEV_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:^|[\s\[\(:=])(?:INFO|NOTICE)(?:[\s\]\):,]|$)")
-        .expect("valid INFO_SEV_RE")
+    Regex::new(r"(?i)(?:^|[\s\[\(:=])(?:INFO|NOTICE)(?:[\s\]\):,]|$)").expect("valid INFO_SEV_RE")
 });
 
 static DEBUG_SEV_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -126,7 +123,9 @@ fn is_trace_continuation(line: &str, prev_in_trace: bool) -> bool {
         || line.starts_with("The above exception was the direct cause")
         || (prev_in_trace
             && !EXTRACT_TS_RE.is_match(line)
-            && (line.contains("Error:") || line.contains("Exception:") || line.starts_with("stack backtrace:")))
+            && (line.contains("Error:")
+                || line.contains("Exception:")
+                || line.starts_with("stack backtrace:")))
 }
 
 /// Normalizes timestamps, UUIDs, IPv4 addresses, hex digests, and standalone numbers into
@@ -191,23 +190,23 @@ pub(crate) fn reduce_logs(
                 if !line.trim().is_empty() || in_trace {
                     last_ev.continuation_lines.push(line.to_string());
                 }
-                if matches!(last_ev.level, LogLevel::Info | LogLevel::Debug | LogLevel::Other)
-                    && (line.contains("Traceback")
-                        || line.contains("Error:")
-                        || line.contains("Exception:"))
+                if matches!(
+                    last_ev.level,
+                    LogLevel::Info | LogLevel::Debug | LogLevel::Other
+                ) && (line.contains("Traceback")
+                    || line.contains("Error:")
+                    || line.contains("Exception:"))
                 {
                     last_ev.level = LogLevel::Error;
                 }
             }
             in_trace = !line.trim().is_empty()
-                || raw_lines
-                    .get(idx + 1)
-                    .is_some_and(|nxt| {
-                        nxt.starts_with("During handling of the above exception")
-                            || nxt.starts_with("The above exception was the direct cause")
-                            || nxt.starts_with("Traceback ")
-                            || nxt.starts_with("  ")
-                    });
+                || raw_lines.get(idx + 1).is_some_and(|nxt| {
+                    nxt.starts_with("During handling of the above exception")
+                        || nxt.starts_with("The above exception was the direct cause")
+                        || nxt.starts_with("Traceback ")
+                        || nxt.starts_with("  ")
+                });
             continue;
         }
 
@@ -278,7 +277,8 @@ pub(crate) fn reduce_logs(
         }
     }
 
-    let failure_identifiers = dedup_preserve_order(unique_errors.iter().map(|(msg, _, _, _)| msg.clone()));
+    let failure_identifiers =
+        dedup_preserve_order(unique_errors.iter().map(|(msg, _, _, _)| msg.clone()));
 
     let mut out_lines: Vec<String> = Vec::new();
     let mut header = format!(
@@ -301,7 +301,10 @@ pub(crate) fn reduce_logs(
     if !unique_errors.is_empty() {
         out_lines.push(format!("unique ERROR/FATAL ({}):", unique_errors.len()));
         for (msg, count, start_ln, trace) in &unique_errors {
-            out_lines.push(format!("  [x{count}] {msg} [{} L{start_ln}]", stream.as_str()));
+            out_lines.push(format!(
+                "  [x{count}] {msg} [{} L{start_ln}]",
+                stream.as_str()
+            ));
             for tl in trace {
                 out_lines.push(format!("    {tl}"));
             }
@@ -318,7 +321,7 @@ pub(crate) fn reduce_logs(
     if !templates.is_empty() {
         let tpl_cap = 15usize;
         out_lines.push(format!("deduplicated templates ({}):", templates.len()));
-        for ( _, tpl, count, start_ln) in templates.iter().take(tpl_cap) {
+        for (_, tpl, count, start_ln) in templates.iter().take(tpl_cap) {
             out_lines.push(format!("  [x{count}] {tpl} [L{start_ln}]"));
         }
         if templates.len() > tpl_cap {
@@ -329,7 +332,9 @@ pub(crate) fn reduce_logs(
         }
     }
 
-    let omitted = total_lines > unique_errors.len() + templates.len() || templates.iter().any(|t| t.2 > 1) || unique_errors.iter().any(|e| e.1 > 1);
+    let omitted = total_lines > unique_errors.len() + templates.len()
+        || templates.iter().any(|t| t.2 > 1)
+        || unique_errors.iter().any(|e| e.1 > 1);
     if omitted && total_lines > 0 {
         let hint_start = unique_errors.first().map_or(1, |(_, _, ln, _)| *ln);
         let hint_end = (hint_start + budget.max_get_lines.saturating_sub(1)).min(total_lines);

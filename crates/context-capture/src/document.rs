@@ -84,7 +84,8 @@ pub async fn capture_file(
     }
 
     let stream = acc.finalize();
-    let media_type = Some(infer_media_type(Path::new(&confined.relative), stream.encoding).to_string());
+    let media_type =
+        Some(infer_media_type(Path::new(&confined.relative), stream.encoding).to_string());
 
     Ok(CapturedDocument {
         path_relative: Some(confined.relative),

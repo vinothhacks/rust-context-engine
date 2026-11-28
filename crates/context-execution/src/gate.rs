@@ -274,7 +274,9 @@ impl ExecutionGate {
         let cwd = self.resolve_cwd(scope, request.cwd.as_deref())?;
 
         let safe_base = self.policy.filter_safe_env(base_env);
-        let safe_extra = self.policy.filter_safe_env(request.extra_env.iter().cloned());
+        let safe_extra = self
+            .policy
+            .filter_safe_env(request.extra_env.iter().cloned());
         let scrubbed_env = merge_env_vars(safe_base, safe_extra);
 
         Ok(ApprovedCommand {

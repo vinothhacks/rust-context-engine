@@ -9,7 +9,9 @@ use context_capture::CaptureCancelToken;
 use context_core::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::io::{
+    AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader,
+};
 use tokio::sync::Mutex as AsyncMutex;
 use tokio::task::JoinSet;
 
@@ -27,6 +29,7 @@ pub const MAX_RPC_FRAME_BYTES: usize = 18 * 1024 * 1024;
 
 /// Maximum number of HTTP-style header lines permitted in a `Content-Length:` frame.
 const MAX_HEADER_LINES: usize = 16;
+const MAX_HEADER_LINE_BYTES: usize = 8 * 1024;
 
 /// Standard JSON-RPC 2.0 error codes.
 pub const JSONRPC_PARSE_ERROR: i32 = -32700;
@@ -619,8 +622,7 @@ where
                     ),
                 });
             }
-            BoundedLine::Bytes(mut line) => {
-                trim_crlf(&mut line);
+            BoundedLine::Bytes(line) => {
                 if line.iter().all(u8::is_ascii_whitespace) {
                     continue;
                 }
@@ -646,14 +648,22 @@ where
     R: AsyncBufRead + Unpin,
 {
     let raw_len_part = &first_header_line[b"content-length:".len()..];
-    let len_str = std::str::from_utf8(raw_len_part).unwrap_or("").trim();
-    let Ok(content_length) = len_str.parse::<usize>() else {
+    let content_length = if first_header_line.len() <= MAX_HEADER_LINE_BYTES {
+        std::str::from_utf8(raw_len_part)
+            .ok()
+            .map(|value| value.trim_matches([' ', '\t']))
+            .filter(|value| value.bytes().all(|byte| byte.is_ascii_digit()))
+            .and_then(|value| value.parse::<usize>().ok())
+    } else {
+        None
+    };
+    let Some(content_length) = content_length else {
         // Consume remaining headers up to blank line so stream stays aligned where possible.
         let _ = drain_headers(reader).await?;
         return Ok(FrameReadOutcome::ProtocolError {
             framing: FramingMode::ContentLength,
             code: JSONRPC_INVALID_REQUEST,
-            message: format!("invalid Content-Length header value '{len_str}'"),
+            message: "invalid Content-Length header value".to_string(),
         });
     };
 
@@ -695,15 +705,10 @@ where
     R: AsyncBufRead + Unpin,
 {
     for _ in 0..MAX_HEADER_LINES {
-        match read_bounded_line(reader, 8 * 1024).await? {
-            BoundedLine::Eof => return Ok(false),
-            BoundedLine::Oversized => return Ok(false),
-            BoundedLine::Bytes(mut hdr) => {
-                trim_crlf(&mut hdr);
-                if hdr.is_empty() {
-                    return Ok(true);
-                }
-            }
+        match read_bounded_line(reader, MAX_HEADER_LINE_BYTES).await? {
+            BoundedLine::Eof | BoundedLine::Oversized => return Ok(false),
+            BoundedLine::Bytes(hdr) if hdr.is_empty() => return Ok(true),
+            BoundedLine::Bytes(_) => {}
         }
     }
     Ok(false)
@@ -773,7 +778,8 @@ where
         reader.consume(chunk_len);
     }
 
-    if oversized {
+    trim_crlf(&mut out);
+    if oversized || out.len() > max_bytes {
         Ok(BoundedLine::Oversized)
     } else {
         Ok(BoundedLine::Bytes(out))
@@ -791,4 +797,45 @@ fn trim_crlf(buf: &mut Vec<u8>) {
 
 fn starts_with_ignore_ascii_case(haystack: &[u8], prefix: &[u8]) -> bool {
     haystack.len() >= prefix.len() && haystack[..prefix.len()].eq_ignore_ascii_case(prefix)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn bounded_line_checks_payload_length_with_lf_crlf_and_eof() {
+        for input in ["abc\n", "abc\r\n", "abc"] {
+            let line = read_bounded_line(&mut input.as_bytes(), 3).await.unwrap();
+            assert!(matches!(line, BoundedLine::Bytes(bytes) if bytes == b"abc"));
+        }
+        for input in ["abcd\n", "abcd\r\n", "abcd"] {
+            let line = read_bounded_line(&mut input.as_bytes(), 3).await.unwrap();
+            assert!(matches!(line, BoundedLine::Oversized));
+        }
+    }
+
+    #[tokio::test]
+    async fn malformed_content_length_has_a_fixed_error_message() {
+        for input in [
+            "Content-Length: invalid\r\n\r\n".to_string(),
+            "Content-Length: +2\r\n\r\n".to_string(),
+            format!(
+                "Content-Length: {}2\r\n\r\n",
+                " ".repeat(MAX_HEADER_LINE_BYTES)
+            ),
+        ] {
+            let frame = read_next_frame(&mut input.as_bytes(), FramingMode::NewlineDelimited)
+                .await
+                .unwrap();
+            assert!(matches!(
+                frame,
+                FrameReadOutcome::ProtocolError {
+                    framing: FramingMode::ContentLength,
+                    code: JSONRPC_INVALID_REQUEST,
+                    message,
+                } if message == "invalid Content-Length header value"
+            ));
+        }
+    }
 }

@@ -155,7 +155,9 @@ fn resolve_windows_principal_candidates() -> Result<Vec<String>> {
         let out = std::process::Command::new("whoami")
             .output()
             .map_err(|err| ContextError::Storage {
-                message: format!("unable to determine current Windows user via env or whoami: {err}"),
+                message: format!(
+                    "unable to determine current Windows user via env or whoami: {err}"
+                ),
             })?;
         if out.status.success() {
             let who = String::from_utf8_lossy(&out.stdout).trim().to_string();
@@ -192,7 +194,10 @@ fn apply_windows_icacls(dir: &Path) -> Result<()> {
             .arg(&grant_arg)
             .output()
             .map_err(|err| ContextError::Storage {
-                message: format!("failed to invoke icacls on '{}': {err}", simplified.display()),
+                message: format!(
+                    "failed to invoke icacls on '{}': {err}",
+                    simplified.display()
+                ),
             })?;
 
         if output.status.success() {
@@ -224,7 +229,10 @@ fn verify_windows_icacls(dir: &Path) -> Result<StorePermissionReport> {
         .arg(simplified)
         .output()
         .map_err(|err| ContextError::Storage {
-            message: format!("failed to query icacls on '{}': {err}", simplified.display()),
+            message: format!(
+                "failed to query icacls on '{}': {err}",
+                simplified.display()
+            ),
         })?;
 
     if !output.status.success() {

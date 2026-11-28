@@ -394,7 +394,8 @@ impl SecretGuard {
                 continue;
             }
 
-            let (val_start, val_end) = trim_surrounding_quotes(input, val_match.start(), val_match.end());
+            let (val_start, val_end) =
+                trim_surrounding_quotes(input, val_match.start(), val_match.end());
             if val_end <= val_start {
                 continue;
             }

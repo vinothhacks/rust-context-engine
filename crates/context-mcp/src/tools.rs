@@ -452,8 +452,7 @@ fn extract_arguments_object<'a>(
     tool_name: &str,
     raw: Option<&'a Value>,
 ) -> std::result::Result<&'a Map<String, Value>, InvalidToolParams> {
-    static EMPTY_MAP: std::sync::LazyLock<Map<String, Value>> =
-        std::sync::LazyLock::new(Map::new);
+    static EMPTY_MAP: std::sync::LazyLock<Map<String, Value>> = std::sync::LazyLock::new(Map::new);
 
     match raw {
         None | Some(Value::Null) => Ok(&EMPTY_MAP),
@@ -653,10 +652,7 @@ fn parse_context_run_args(
         let Some(s) = item.as_str() else {
             return Err(InvalidToolParams::new(
                 TOOL_CONTEXT_RUN,
-                format!(
-                    "argv[{idx}] must be a string, got {}",
-                    json_type_name(item)
-                ),
+                format!("argv[{idx}] must be a string, got {}", json_type_name(item)),
             ));
         };
         if s.is_empty() && idx == 0 {
@@ -677,11 +673,11 @@ fn parse_context_run_args(
         argv.push(s.to_string());
     }
 
-    let cwd = get_optional_string(TOOL_CONTEXT_RUN, map, "cwd", 1, MAX_PATH_BYTES)?
-        .map(PathBuf::from);
+    let cwd =
+        get_optional_string(TOOL_CONTEXT_RUN, map, "cwd", 1, MAX_PATH_BYTES)?.map(PathBuf::from);
     let timeout_ms = get_optional_u64(TOOL_CONTEXT_RUN, map, "timeout_ms", 1, 600_000)?;
-    let session_id = get_optional_string(TOOL_CONTEXT_RUN, map, "session_id", 1, 128)?
-        .map(str::to_string);
+    let session_id =
+        get_optional_string(TOOL_CONTEXT_RUN, map, "session_id", 1, 128)?.map(str::to_string);
 
     Ok(RunCommandRequest {
         argv,
@@ -715,8 +711,8 @@ fn parse_context_index_args(
         MAX_MEDIA_TYPE_BYTES,
     )?
     .map(str::to_string);
-    let session_id = get_optional_string(TOOL_CONTEXT_INDEX, map, "session_id", 1, 128)?
-        .map(str::to_string);
+    let session_id =
+        get_optional_string(TOOL_CONTEXT_INDEX, map, "session_id", 1, 128)?.map(str::to_string);
 
     let source = match (path_opt, content_opt) {
         (Some(_), Some(_)) => {
@@ -733,7 +729,7 @@ fn parse_context_index_args(
         }
         (Some(p), None) => IndexSource::FilePath(PathBuf::from(p)),
         (None, Some(c)) => {
-            if label.as_deref().map_or(true, |l| l.trim().is_empty()) {
+            if label.as_deref().is_none_or(|l| l.trim().is_empty()) {
                 return Err(InvalidToolParams::new(
                     TOOL_CONTEXT_INDEX,
                     "property 'label' is required when indexing inline 'content'",
@@ -768,8 +764,8 @@ fn parse_context_search_args(
     let max_res = budget.max_search_results as u64;
     let limit = get_optional_u64(TOOL_CONTEXT_SEARCH, map, "limit", 1, max_res)?
         .map(|n| usize::try_from(n).unwrap_or(10));
-    let session_id = get_optional_string(TOOL_CONTEXT_SEARCH, map, "session_id", 1, 128)?
-        .map(str::to_string);
+    let session_id =
+        get_optional_string(TOOL_CONTEXT_SEARCH, map, "session_id", 1, 128)?.map(str::to_string);
 
     Ok(SearchQueryRequest {
         query,
@@ -805,8 +801,8 @@ fn parse_context_get_args(
         None => None,
     };
 
-    let session_id = get_optional_string(TOOL_CONTEXT_GET, map, "session_id", 1, 128)?
-        .map(str::to_string);
+    let session_id =
+        get_optional_string(TOOL_CONTEXT_GET, map, "session_id", 1, 128)?.map(str::to_string);
 
     let has_lines = map.contains_key("lines");
     let has_bytes = map.contains_key("bytes");
@@ -931,12 +927,12 @@ fn parse_context_resume_args(
         &["session_id", "create_checkpoint", "note"],
     )?;
 
-    let session_id = get_optional_string(TOOL_CONTEXT_RESUME, map, "session_id", 1, 128)?
-        .map(str::to_string);
+    let session_id =
+        get_optional_string(TOOL_CONTEXT_RESUME, map, "session_id", 1, 128)?.map(str::to_string);
     let create_checkpoint =
         get_optional_bool(TOOL_CONTEXT_RESUME, map, "create_checkpoint")?.unwrap_or(false);
-    let note =
-        get_optional_string(TOOL_CONTEXT_RESUME, map, "note", 0, MAX_NOTE_BYTES)?.map(str::to_string);
+    let note = get_optional_string(TOOL_CONTEXT_RESUME, map, "note", 0, MAX_NOTE_BYTES)?
+        .map(str::to_string);
 
     Ok(ResumeRequest {
         session_id,
@@ -950,10 +946,9 @@ fn parse_context_stats_args(
     map: &Map<String, Value>,
 ) -> std::result::Result<(Option<String>, bool), InvalidToolParams> {
     ensure_allowed_keys(TOOL_CONTEXT_STATS, map, &["session_id", "all_sessions"])?;
-    let session_id = get_optional_string(TOOL_CONTEXT_STATS, map, "session_id", 1, 128)?
-        .map(str::to_string);
-    let all_sessions =
-        get_optional_bool(TOOL_CONTEXT_STATS, map, "all_sessions")?.unwrap_or(false);
+    let session_id =
+        get_optional_string(TOOL_CONTEXT_STATS, map, "session_id", 1, 128)?.map(str::to_string);
+    let all_sessions = get_optional_bool(TOOL_CONTEXT_STATS, map, "all_sessions")?.unwrap_or(false);
     Ok((session_id, all_sessions))
 }
 

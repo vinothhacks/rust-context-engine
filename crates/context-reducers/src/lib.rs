@@ -253,10 +253,7 @@ impl ReducerEngine {
     }
 
     #[must_use]
-    pub fn reduce_command_with_input(
-        &self,
-        input: &CommandReductionInput<'_>,
-    ) -> ReductionOutcome {
+    pub fn reduce_command_with_input(&self, input: &CommandReductionInput<'_>) -> ReductionOutcome {
         reduce_command_with_input(input, &self.budget, &self.secret_guard)
     }
 
@@ -444,7 +441,10 @@ fn split_verified_ledger_banner(raw_text: &str) -> Option<(&str, &str)> {
 
     let prefix_offset = raw_text.len() - trimmed.len();
     let header_end_in_raw = prefix_offset + close_bracket + 1;
-    Some((&raw_text[..header_end_in_raw], &raw_text[header_end_in_raw..]))
+    Some((
+        &raw_text[..header_end_in_raw],
+        &raw_text[header_end_in_raw..],
+    ))
 }
 
 fn build_passthrough_outcome(
@@ -463,22 +463,22 @@ fn build_passthrough_outcome(
     // Preserve a cryptographically/syntactically verified `[context-engine:v1 artifact=a_<64-hex> ...]`
     // header verbatim (preventing `artifact=a_<hex>` from false-positiving `SecretGuard`'s `=` token
     // entropy heuristic), while scanning 100% of the body text through `SecretGuard`.
-    let sanitized_full = if let Some((verified_banner, body)) = split_verified_ledger_banner(raw_text)
-    {
-        let scan = secret_guard.scan_str(body);
-        secrets_redacted += scan.redacted_count();
-        for r in scan.distinct_rule_ids() {
-            rules.insert(r);
-        }
-        format!("{verified_banner}{}", scan.sanitized_text)
-    } else {
-        let scan = secret_guard.scan_str(raw_text);
-        secrets_redacted += scan.redacted_count();
-        for r in scan.distinct_rule_ids() {
-            rules.insert(r);
-        }
-        scan.sanitized_text
-    };
+    let sanitized_full =
+        if let Some((verified_banner, body)) = split_verified_ledger_banner(raw_text) {
+            let scan = secret_guard.scan_str(body);
+            secrets_redacted += scan.redacted_count();
+            for r in scan.distinct_rule_ids() {
+                rules.insert(r);
+            }
+            format!("{verified_banner}{}", scan.sanitized_text)
+        } else {
+            let scan = secret_guard.scan_str(raw_text);
+            secrets_redacted += scan.redacted_count();
+            for r in scan.distinct_rule_ids() {
+                rules.insert(r);
+            }
+            scan.sanitized_text
+        };
 
     if secrets_redacted > 0 {
         ledger.record(TRANSFORM_SECRET_REDACT_V1);
@@ -939,7 +939,9 @@ fn reduce_command_inner(
     let norm_out = prep_out.normalized_text.as_deref().unwrap_or("");
     let norm_err = prep_err.normalized_text.as_deref().unwrap_or("");
 
-    if norm_err.is_empty() && TransformationLedger::is_already_reduced_payload(ported::strip_bom(norm_out)) {
+    if norm_err.is_empty()
+        && TransformationLedger::is_already_reduced_payload(ported::strip_bom(norm_out))
+    {
         return build_passthrough_outcome(
             norm_out,
             raw_bytes,
@@ -978,29 +980,28 @@ fn reduce_command_inner(
         clean_err,
     );
 
-    let (primary_stream, primary_bytes, sec_bytes, merged_clean_text) = if !clean_out.is_empty()
-        || input.stderr.is_empty()
-    {
-        let merged = if clean_err.is_empty() {
-            clean_out.clone()
-        } else if clean_out.is_empty() {
-            clean_err.clone()
-        } else {
-            format!("{clean_err}\n{clean_out}")
-        };
-        (
-            StreamKind::Stdout,
-            input.stdout,
-            if input.stderr.is_empty() {
-                None
+    let (primary_stream, primary_bytes, sec_bytes, merged_clean_text) =
+        if !clean_out.is_empty() || input.stderr.is_empty() {
+            let merged = if clean_err.is_empty() {
+                clean_out.clone()
+            } else if clean_out.is_empty() {
+                clean_err.clone()
             } else {
-                Some(input.stderr)
-            },
-            merged,
-        )
-    } else {
-        (StreamKind::Stderr, input.stderr, None, clean_err.clone())
-    };
+                format!("{clean_err}\n{clean_out}")
+            };
+            (
+                StreamKind::Stdout,
+                input.stdout,
+                if input.stderr.is_empty() {
+                    None
+                } else {
+                    Some(input.stderr)
+                },
+                merged,
+            )
+        } else {
+            (StreamKind::Stderr, input.stderr, None, clean_err.clone())
+        };
 
     let attempt = catch_unwind(AssertUnwindSafe(|| -> Result<DomainReduction, String> {
         if let Some(fault_reason) = forced_fault {
@@ -1253,7 +1254,7 @@ pub(crate) fn reduce_command_with_simulated_fault(
 #[cfg(test)]
 mod unit_tests {
     use context_core::{
-        ArtifactEnvelope, ArtifactSource, BoundScope, CaptureSummary, RecoveryHandle, sha256_hex,
+        sha256_hex, ArtifactEnvelope, ArtifactSource, BoundScope, CaptureSummary, RecoveryHandle,
     };
     use tempfile::TempDir;
 
@@ -1269,7 +1270,8 @@ mod unit_tests {
 
         let fault_with_secret =
             "synthetic parser failure near token ghp_0123456789abcdefghijklmnopqrstuvwxyzABCD";
-        let outcome = reduce_command_with_simulated_fault(&input, &budget, &guard, fault_with_secret);
+        let outcome =
+            reduce_command_with_simulated_fault(&input, &budget, &guard, fault_with_secret);
 
         assert_eq!(outcome.target, ReducerTarget::UnknownSafe);
         assert_eq!(outcome.view.kind, ViewKind::UnknownSafe);
@@ -1301,12 +1303,7 @@ mod unit_tests {
              2026-11-22T12:00:02Z ERROR Auth rejected token {leaked_gh} and key {leaked_openai}\n"
         );
 
-        let out = reduce_stream(
-            log_payload.as_bytes(),
-            StreamKind::Stdout,
-            &budget,
-            &guard,
-        );
+        let out = reduce_stream(log_payload.as_bytes(), StreamKind::Stdout, &budget, &guard);
         assert_eq!(out.target, ReducerTarget::LogDedup);
         assert!(out.secrets_redacted >= 2);
         assert!(out
@@ -1317,7 +1314,10 @@ mod unit_tests {
         assert!(!out.view.safe_excerpt.contains(leaked_openai));
         assert!(!out.view.failure_identifiers.is_empty());
         for fid in &out.view.failure_identifiers {
-            assert!(!fid.contains(leaked_gh), "secret leaked in failure_identifiers: {fid}");
+            assert!(
+                !fid.contains(leaked_gh),
+                "secret leaked in failure_identifiers: {fid}"
+            );
             assert!(
                 !fid.contains(leaked_openai),
                 "secret leaked in failure_identifiers: {fid}"
@@ -1437,7 +1437,10 @@ mod unit_tests {
             &budget,
             &guard,
         );
-        assert!(out_5.view.safe_excerpt.contains("NO_TESTS_COLLECTED (exit 5)"));
+        assert!(out_5
+            .view
+            .safe_excerpt
+            .contains("NO_TESTS_COLLECTED (exit 5)"));
 
         // Exit code 2 = pre-collection crash (SyntaxError / ImportError) -> must NEVER report PASS
         let crash_stderr = b"ImportError while importing test module 'tests/test_api.py'.\nModuleNotFoundError: No module named 'pydantic'\n";
@@ -1455,8 +1458,14 @@ mod unit_tests {
         let nextest_stderr = b"    Starting 20 tests across 2 binaries\n        PASS [   0.012s] core::unit budget::ok\n        FAIL [   0.045s] core::unit scope::forged_denied\n     Summary [   0.060s] 20 tests run: 19 passed, 1 failed, 2 skipped\n";
         let r_next = engine.reduce_command_output(&nextest_argv, Some(100), b"", nextest_stderr);
         assert_eq!(r_next.target, ReducerTarget::CargoTest);
-        assert_eq!(r_next.view.failure_identifiers, vec!["scope::forged_denied"]);
-        assert!(r_next.view.safe_excerpt.contains("19 passed, 1 failed, 2 ignored"));
+        assert_eq!(
+            r_next.view.failure_identifiers,
+            vec!["scope::forged_denied"]
+        );
+        assert!(r_next
+            .view
+            .safe_excerpt
+            .contains("19 passed, 1 failed, 2 ignored"));
 
         // NDJSON stream
         let mut ndjson = String::new();
@@ -1478,8 +1487,10 @@ mod unit_tests {
         let r_git = engine.reduce_command_output(&git_argv, Some(0), git_out, b"");
         assert_eq!(r_git.target, ReducerTarget::GitReducer);
         assert!(r_git.view.safe_excerpt.contains("commit 8f3c2a1b9e"));
-        assert!(r_git.view.safe_excerpt.contains("feat: add single-pass reducer"));
+        assert!(r_git
+            .view
+            .safe_excerpt
+            .contains("feat: add single-pass reducer"));
         assert!(r_git.view.safe_excerpt.contains("file src/lib.rs: +1/-0"));
     }
 }
-

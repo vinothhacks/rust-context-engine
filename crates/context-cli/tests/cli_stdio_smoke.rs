@@ -65,7 +65,10 @@ async fn real_binary_mcp_stdio_emits_zero_stray_stdout_logs_and_runs_end_to_end(
     stdin.flush().await.expect("flush");
 
     let mut line2 = String::new();
-    reader.read_line(&mut line2).await.expect("read doctor reply");
+    reader
+        .read_line(&mut line2)
+        .await
+        .expect("read doctor reply");
     let resp2: Value = serde_json::from_str(&line2).expect("pure JSON-RPC on stdout");
     assert_eq!(resp2["result"]["isError"], false);
 

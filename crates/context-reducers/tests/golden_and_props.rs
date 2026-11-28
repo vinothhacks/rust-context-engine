@@ -161,10 +161,10 @@ fn write_if_changed(path: &Path, expected: &[u8]) {
 #[test]
 fn vertical_slice_1_failing_cargo_test_retains_100_percent_failures_locations_and_exit() {
     let fixtures = ensure_deterministic_fixtures();
-    let stdout =
-        fs::read(fixtures.join("commands/cargo_test_failing_multiline.stdout.txt")).expect("stdout");
-    let stderr =
-        fs::read(fixtures.join("commands/cargo_test_failing_multiline.stderr.txt")).expect("stderr");
+    let stdout = fs::read(fixtures.join("commands/cargo_test_failing_multiline.stdout.txt"))
+        .expect("stdout");
+    let stderr = fs::read(fixtures.join("commands/cargo_test_failing_multiline.stderr.txt"))
+        .expect("stderr");
 
     let tmp = TempDir::new().expect("tempdir");
     let scope = BoundScope::bind(tmp.path(), Some("vs1")).expect("bind");
@@ -176,15 +176,16 @@ fn vertical_slice_1_failing_cargo_test_retains_100_percent_failures_locations_an
         Some(&sha256_hex(&stderr)),
     );
 
-    let argv = vec!["cargo".to_string(), "test".to_string(), "--workspace".to_string()];
+    let argv = vec![
+        "cargo".to_string(),
+        "test".to_string(),
+        "--workspace".to_string(),
+    ];
     let mut input = CommandReductionInput::new(&argv, Some(101), &stdout, &stderr);
     input.artifact_id = Some(&art_id);
 
-    let outcome = reduce_command_with_input(
-        &input,
-        &ReductionBudget::default(),
-        &SecretGuard::default(),
-    );
+    let outcome =
+        reduce_command_with_input(&input, &ReductionBudget::default(), &SecretGuard::default());
 
     assert_eq!(outcome.target, ReducerTarget::CargoTest);
     assert_eq!(outcome.view.kind, ViewKind::TestSummary);
@@ -210,7 +211,10 @@ fn vertical_slice_1_failing_cargo_test_retains_100_percent_failures_locations_an
         "cross_workspace_artifact_probe_denied",
         "crates/context-core/src/scope.rs - scope::BoundScope::bind (line 208)",
     ];
-    assert_eq!(outcome.view.failure_identifiers.len(), expected_failures.len());
+    assert_eq!(
+        outcome.view.failure_identifiers.len(),
+        expected_failures.len()
+    );
     for expected in expected_failures {
         assert!(
             outcome
@@ -249,10 +253,7 @@ fn vertical_slice_2_passing_noisy_5k_cargo_test_exceeds_80_percent_reduction() {
     let stderr =
         fs::read(fixtures.join("commands/cargo_test_passing_noisy_5k.stderr.txt")).expect("stderr");
 
-    let line_count = std::str::from_utf8(&stdout)
-        .expect("utf8")
-        .lines()
-        .count();
+    let line_count = std::str::from_utf8(&stdout).expect("utf8").lines().count();
     assert!(
         line_count >= 5_000,
         "mandatory fixture 2 must have >= 5,000 lines, got {line_count}"
@@ -314,7 +315,10 @@ fn vertical_slice_3_binary_non_utf8_stream_degrades_to_unknown_safe_with_hash_an
     assert!(outcome.view.safe_excerpt.contains("encoding=binary"));
     assert!(outcome.view.safe_excerpt.contains(&expected_sha));
     assert!(outcome.view.safe_excerpt.contains("PNG image"));
-    assert!(outcome.view.safe_excerpt.contains("hex_head(24B): 89 50 4e 47"));
+    assert!(outcome
+        .view
+        .safe_excerpt
+        .contains("hex_head(24B): 89 50 4e 47"));
     assert!(outcome
         .view
         .safe_excerpt
@@ -329,8 +333,7 @@ fn golden_pytest_and_jest_retain_all_failures_errors_xpass_and_locations() {
     // Pytest
     let pytest_stdout =
         fs::read(fixtures.join("commands/pytest_failing_suite.stdout.txt")).expect("pytest");
-    let pytest_out =
-        engine.reduce_command_output(&["pytest".into()], Some(1), &pytest_stdout, b"");
+    let pytest_out = engine.reduce_command_output(&["pytest".into()], Some(1), &pytest_stdout, b"");
     assert_eq!(pytest_out.target, ReducerTarget::PytestJest);
     assert_eq!(pytest_out.view.kind, ViewKind::TestSummary);
     assert!(pytest_out
@@ -349,13 +352,22 @@ fn golden_pytest_and_jest_retain_all_failures_errors_xpass_and_locations() {
         "tests/test_legacy.py::test_strict_xfail_contract",
     ] {
         assert!(
-            pytest_out.view.failure_identifiers.contains(&expected_id.to_string()),
+            pytest_out
+                .view
+                .failure_identifiers
+                .contains(&expected_id.to_string()),
             "missing pytest failure id '{expected_id}' in {:?}",
             pytest_out.view.failure_identifiers
         );
     }
-    assert!(pytest_out.view.safe_excerpt.contains("tests/test_classifier.py:88"));
-    assert!(pytest_out.view.safe_excerpt.contains("tests/test_mcp.py:142"));
+    assert!(pytest_out
+        .view
+        .safe_excerpt
+        .contains("tests/test_classifier.py:88"));
+    assert!(pytest_out
+        .view
+        .safe_excerpt
+        .contains("tests/test_mcp.py:142"));
     assert!(pytest_out
         .view
         .safe_excerpt
@@ -464,14 +476,10 @@ fn golden_git_json_logs_search_ansi_and_document_fixtures() {
         .transformations
         .contains(&TRANSFORM_GIT_REDUCER_V1.to_string()));
     assert!(diff_out.view.omitted);
-    assert!(diff_out
-        .view
-        .safe_excerpt
-        .contains("3 file(s) changed"));
-    assert!(diff_out
-        .view
-        .safe_excerpt
-        .contains("crates/context-reducers/src/legacy.rs -> crates/context-reducers/src/ported.rs (renamed)"));
+    assert!(diff_out.view.safe_excerpt.contains("3 file(s) changed"));
+    assert!(diff_out.view.safe_excerpt.contains(
+        "crates/context-reducers/src/legacy.rs -> crates/context-reducers/src/ported.rs (renamed)"
+    ));
     assert!(diff_out
         .view
         .safe_excerpt
@@ -488,10 +496,9 @@ fn golden_git_json_logs_search_ansi_and_document_fixtures() {
         b"",
     );
     assert_eq!(status_out.target, ReducerTarget::GitReducer);
-    assert!(status_out
-        .view
-        .safe_excerpt
-        .contains("On branch feat/phase3-reducers (exit 0) | staged=3, unstaged=2, untracked=4, conflicted=1"));
+    assert!(status_out.view.safe_excerpt.contains(
+        "On branch feat/phase3-reducers (exit 0) | staged=3, unstaged=2, untracked=4, conflicted=1"
+    ));
     assert_eq!(
         status_out.view.failure_identifiers,
         vec!["both modified: crates/context-mcp/src/router.rs"]
@@ -512,7 +519,10 @@ fn golden_git_json_logs_search_ansi_and_document_fixtures() {
         .transformations
         .contains(&TRANSFORM_STRUCTURED_JSON_V1.to_string()));
     assert!(json_out.view.omitted);
-    assert!(json_out.view.safe_excerpt.contains("Array(len=40) schema={"));
+    assert!(json_out
+        .view
+        .safe_excerpt
+        .contains("Array(len=40) schema={"));
     assert!(json_out.view.safe_excerpt.contains("\"total_count\": 40"));
     assert!(json_out.view.safe_excerpt.contains("SQLITE_BUSY"));
     assert!(json_out.view.safe_excerpt.contains("INTEGRITY_MISMATCH"));
@@ -551,14 +561,8 @@ fn golden_git_json_logs_search_ansi_and_document_fixtures() {
     assert!(log_out.view.safe_excerpt.contains("<UUID>"));
     assert!(log_out.view.safe_excerpt.contains("<IP>"));
     assert_eq!(log_out.view.failure_identifiers.len(), 3);
-    assert!(log_out
-        .view
-        .safe_excerpt
-        .contains("E_BLOB_CHECKSUM"));
-    assert!(log_out
-        .view
-        .safe_excerpt
-        .contains("E_SCOPE_DENIED"));
+    assert!(log_out.view.safe_excerpt.contains("E_BLOB_CHECKSUM"));
+    assert!(log_out.view.safe_excerpt.contains("E_SCOPE_DENIED"));
     assert!(log_out
         .view
         .safe_excerpt
@@ -567,7 +571,13 @@ fn golden_git_json_logs_search_ansi_and_document_fixtures() {
     // 5. Ripgrep output (`search_hits@1`)
     let rg_bytes = fs::read(fixtures.join("commands/ripgrep_hits.stdout.txt")).expect("rg hits");
     let rg_out = engine.reduce_command_output(
-        &["rg".into(), "-n".into(), "-C".into(), "1".into(), "scan_str".into()],
+        &[
+            "rg".into(),
+            "-n".into(),
+            "-C".into(),
+            "1".into(),
+            "scan_str".into(),
+        ],
         Some(0),
         &rg_bytes,
         b"",
@@ -637,7 +647,8 @@ fn median_byte_reduction_across_noisy_fixtures_exceeds_40_percent() {
         fs::read(fixtures.join("commands/cargo_test_passing_noisy_5k.stdout.txt")).expect("f2");
     let f2_err =
         fs::read(fixtures.join("commands/cargo_test_passing_noisy_5k.stderr.txt")).expect("f2e");
-    let r = engine.reduce_command_output(&["cargo".into(), "test".into()], Some(0), &f2_out, &f2_err);
+    let r =
+        engine.reduce_command_output(&["cargo".into(), "test".into()], Some(0), &f2_out, &f2_err);
     ratios.push((
         "cargo_test_passing_noisy_5k",
         r.raw_bytes,
@@ -650,7 +661,12 @@ fn median_byte_reduction_across_noisy_fixtures_exceeds_40_percent() {
         fs::read(fixtures.join("commands/cargo_test_failing_multiline.stdout.txt")).expect("f1");
     let f1_err =
         fs::read(fixtures.join("commands/cargo_test_failing_multiline.stderr.txt")).expect("f1e");
-    let r = engine.reduce_command_output(&["cargo".into(), "test".into()], Some(101), &f1_out, &f1_err);
+    let r = engine.reduce_command_output(
+        &["cargo".into(), "test".into()],
+        Some(101),
+        &f1_out,
+        &f1_err,
+    );
     ratios.push((
         "cargo_test_failing_multiline",
         r.raw_bytes,
@@ -679,7 +695,8 @@ fn median_byte_reduction_across_noisy_fixtures_exceeds_40_percent() {
     ));
 
     // 5. Rustc duplicate cargo check errors/warnings
-    let fr = fs::read(fixtures.join("commands/rustc_cargo_check_errors.stderr.txt")).expect("rustc");
+    let fr =
+        fs::read(fixtures.join("commands/rustc_cargo_check_errors.stderr.txt")).expect("rustc");
     let r = engine.reduce_command_output(&["cargo".into(), "check".into()], Some(101), b"", &fr);
     ratios.push((
         "rustc_cargo_check_errors",
@@ -700,7 +717,11 @@ fn median_byte_reduction_across_noisy_fixtures_exceeds_40_percent() {
 
     // 7. Large JSON array
     let fj = fs::read(fixtures.join("documents/large_api_records.json")).expect("json");
-    let r = engine.reduce_document(&fj, Some("large_api_records.json"), Some("application/json"));
+    let r = engine.reduce_document(
+        &fj,
+        Some("large_api_records.json"),
+        Some("application/json"),
+    );
     ratios.push((
         "large_api_records.json",
         r.raw_bytes,
@@ -719,7 +740,8 @@ fn median_byte_reduction_across_noisy_fixtures_exceeds_40_percent() {
     ));
 
     // 9. ANSI + CRLF + spinner torture
-    let fa = fs::read(fixtures.join("commands/ansi_crlf_spinner_torture.stdout.txt")).expect("ansi");
+    let fa =
+        fs::read(fixtures.join("commands/ansi_crlf_spinner_torture.stdout.txt")).expect("ansi");
     let r = engine.reduce_command_output(&["cargo".into(), "test".into()], Some(101), &fa, b"");
     ratios.push((
         "ansi_crlf_spinner_torture",
@@ -764,8 +786,7 @@ fn adversarial_passthrough_banner_binary_secrets_quarantine_vitest_and_porcelain
     let guard = SecretGuard::default();
 
     // 1. High-entropy valid `artifact=a_<64-hex>` preserved while secret in body is redacted
-    let tricky_art_id =
-        "a_86663b5856351e7d36941c8be041fda095b2a0789042d5c0e85e5eb3fd7aedba";
+    let tricky_art_id = "a_86663b5856351e7d36941c8be041fda095b2a0789042d5c0e85e5eb3fd7aedba";
     let forged_passthrough = format!(
         "[context-engine:v1 artifact={tricky_art_id} transforms=strip_ansi@1,cargo_test@1]\n\
          Authorization: Bearer mySuperSecretOpaqueBearerToken987654"

@@ -73,10 +73,8 @@ static JEST_BULLET_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*●\s+(?P<name>.+?)\s*$").expect("valid JEST_BULLET_RE"));
 
 static JS_STACK_LOC_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?:\((?P<p1>[^()\s]+:[0-9]+:[0-9]+)\)|(?:at|❯)\s+(?P<p2>[^\s()]+:[0-9]+:[0-9]+))",
-    )
-    .expect("valid JS_STACK_LOC_RE")
+    Regex::new(r"(?:\((?P<p1>[^()\s]+:[0-9]+:[0-9]+)\)|(?:at|❯)\s+(?P<p2>[^\s()]+:[0-9]+:[0-9]+))")
+        .expect("valid JS_STACK_LOC_RE")
 });
 
 #[derive(Debug, Clone)]
@@ -428,9 +426,8 @@ pub(crate) fn reduce_pytest_jest(
     };
 
     let mut out_lines: Vec<String> = Vec::new();
-    let mut header = format!(
-        "pytest_jest@1: {status_word} ({exit_badge}) | {passed} passed, {failed} failed"
-    );
+    let mut header =
+        format!("pytest_jest@1: {status_word} ({exit_badge}) | {passed} passed, {failed} failed");
     if errors > 0 {
         header.push_str(&format!(", {errors} error(s)"));
     }

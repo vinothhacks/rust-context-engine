@@ -3,7 +3,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use chrono::{SecondsFormat, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -27,7 +27,7 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
 /// Returns the current UTC timestamp formatted in RFC 3339 (`YYYY-MM-DDTHH:MM:SS.sssZ`).
 #[must_use]
 pub fn now_rfc3339_utc() -> String {
-    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+    format!("{:.3}", Timestamp::now())
 }
 
 /// Server-derived canonical workspace scope identifier (`ws_<32-hex>`).

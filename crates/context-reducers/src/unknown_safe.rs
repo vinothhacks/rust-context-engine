@@ -11,7 +11,9 @@ use context_core::{
 };
 
 use crate::ansi::identify_binary_magic;
-use crate::common::{count_lines, format_exit_badge, format_recovery_hint, DomainReduction, RecoveryRange};
+use crate::common::{
+    count_lines, format_exit_badge, format_recovery_hint, DomainReduction, RecoveryRange,
+};
 
 pub(crate) struct UnknownSafeParams<'a> {
     pub view_kind: ViewKind,
@@ -39,7 +41,11 @@ fn format_hex_head(bytes: &[u8], max_bytes: usize) -> String {
         .join(" ")
 }
 
-fn build_head_tail_preview(text: &str, max_preview_bytes: usize, max_lines: usize) -> (String, bool) {
+fn build_head_tail_preview(
+    text: &str,
+    max_preview_bytes: usize,
+    max_lines: usize,
+) -> (String, bool) {
     if text.is_empty() {
         return (String::new(), false);
     }
@@ -91,14 +97,14 @@ fn build_head_tail_preview(text: &str, max_preview_bytes: usize, max_lines: usiz
 pub(crate) fn reduce_unknown_safe(params: &UnknownSafeParams<'_>) -> DomainReduction {
     let primary_sha = sha256_hex(params.raw_bytes);
     let primary_len = params.raw_bytes.len();
-    let total_len = primary_len
-        + params
-            .secondary_stderr_bytes
-            .map_or(0, <[u8]>::len);
+    let total_len = primary_len + params.secondary_stderr_bytes.map_or(0, <[u8]>::len);
 
     let mut out_lines: Vec<String> = Vec::new();
     let exit_part = if params.exit_code.is_some() || params.timed_out {
-        format!(" ({})", format_exit_badge(params.exit_code, params.timed_out))
+        format!(
+            " ({})",
+            format_exit_badge(params.exit_code, params.timed_out)
+        )
     } else {
         String::new()
     };
@@ -124,7 +130,9 @@ pub(crate) fn reduce_unknown_safe(params: &UnknownSafeParams<'_>) -> DomainReduc
 
     if params.encoding == StreamEncoding::Binary {
         let magic = identify_binary_magic(params.raw_bytes);
-        out_lines.push(format!("binary_format: {magic} (unparsed binary/non-UTF-8 payload)"));
+        out_lines.push(format!(
+            "binary_format: {magic} (unparsed binary/non-UTF-8 payload)"
+        ));
         if params.secrets_detected_in_binary {
             out_lines.push("hex_head: [withheld: embedded secret pattern detected]".to_string());
         } else if !params.raw_bytes.is_empty() {

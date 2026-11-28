@@ -134,12 +134,7 @@ pub(crate) fn reduce_compiler_diag(
                 } else {
                     DiagSeverity::Warning
                 };
-                let span = format!(
-                    "{}:{}:{}",
-                    caps["file"].trim(),
-                    &caps["line"],
-                    &caps["col"]
-                );
+                let span = format!("{}:{}:{}", caps["file"].trim(), &caps["line"], &caps["col"]);
                 let code = caps["code"].to_string();
                 let msg = caps["msg"].trim().to_string();
 
