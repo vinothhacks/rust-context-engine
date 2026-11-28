@@ -141,10 +141,12 @@ async fn symlink_junction_escape_traversal_and_sensitive_file_denials() {
     let mut expected_denials = 0u64;
 
     // 1. Junction / symlink escape attempts (existing file, non-existent leaf, and `cwd` escape)
+    let separator = std::path::MAIN_SEPARATOR;
+    let two_parents = format!("..{separator}..{separator}outside.txt");
     for (req_id, bad_path) in [
         ("junc-1", "escaped_junction/outside_secret.txt"),
         ("junc-2", "escaped_junction/nonexistent_future_file.txt"),
-        ("trav-1", "..\\..\\outside.txt"),
+        ("trav-1", two_parents.as_str()),
         ("trav-2", "../outside_secret.txt"),
         ("trav-3", "subdir/../../../outside_secret.txt"),
         (
