@@ -1224,18 +1224,21 @@ fn classify_check_family(reducer_id: Option<&str>, command_summary: &str) -> Str
         }
     }
 
-    let lower = command_summary.trim().to_ascii_lowercase();
-    let parts: Vec<&str> = lower.split_whitespace().collect();
-    match parts.as_slice() {
-        ["cargo", "test" | "nextest", ..]
-        | ["pytest", ..]
-        | ["npm" | "pnpm" | "yarn", "test", ..] => "test_suite".to_string(),
-        ["cargo", "check" | "build" | "clippy", ..] | ["rustc", ..] | ["tsc", ..] => {
+    let mut parts = command_summary
+        .split_whitespace()
+        .map(str::to_ascii_lowercase);
+    let program = parts.next();
+    let subcommand = parts.next();
+    match (program.as_deref(), subcommand.as_deref()) {
+        (Some("cargo"), Some("test" | "nextest"))
+        | (Some("pytest"), _)
+        | (Some("npm" | "pnpm" | "yarn"), Some("test")) => "test_suite".to_string(),
+        (Some("cargo"), Some("check" | "build" | "clippy")) | (Some("rustc" | "tsc"), _) => {
             "compiler_diagnostics".to_string()
         }
-        [prog, sub, ..] => format!("cmd:{prog}:{sub}"),
-        [prog] => format!("cmd:{prog}"),
-        [] => "cmd:unknown".to_string(),
+        (Some(prog), Some(sub)) => format!("cmd:{prog}:{sub}"),
+        (Some(prog), None) => format!("cmd:{prog}"),
+        (None, _) => "cmd:unknown".to_string(),
     }
 }
 
