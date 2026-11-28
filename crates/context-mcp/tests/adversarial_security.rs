@@ -141,10 +141,12 @@ async fn symlink_junction_escape_traversal_and_sensitive_file_denials() {
     let mut expected_denials = 0u64;
 
     // 1. Junction / symlink escape attempts (existing file, non-existent leaf, and `cwd` escape)
+    let separator = std::path::MAIN_SEPARATOR;
+    let two_parents = format!("..{separator}..{separator}outside.txt");
     for (req_id, bad_path) in [
         ("junc-1", "escaped_junction/outside_secret.txt"),
         ("junc-2", "escaped_junction/nonexistent_future_file.txt"),
-        ("trav-1", "..\\..\\outside.txt"),
+        ("trav-1", two_parents.as_str()),
         ("trav-2", "../outside_secret.txt"),
         ("trav-3", "subdir/../../../outside_secret.txt"),
         (
@@ -878,7 +880,7 @@ async fn command_injection_shell_denial_prompt_injection_22mb_flood_timeout_and_
     assert!(!flood_env.capture.complete);
     assert!(flood_env.view.safe_excerpt.len() <= engine.budget().max_view_bytes);
 
-    // 4. Hung child process timeout termination
+    // 4. Hung child process timeout termination, with time for cold Python startup.
     let hang_started = Instant::now();
     send_rpc(
         &mut client_wr,
@@ -894,7 +896,7 @@ async fn command_injection_shell_denial_prompt_injection_22mb_flood_timeout_and_
                         "-c",
                         "import sys, time; sys.stdout.write('partial_before_hang_77\\n'); sys.stdout.flush(); time.sleep(30)"
                     ],
-                    "timeout_ms": 350
+                    "timeout_ms": 2500
                 }
             }
         }),
@@ -1001,12 +1003,12 @@ async fn command_injection_shell_denial_prompt_injection_22mb_flood_timeout_and_
     srv_task.await.expect("join server");
 }
 
+#[cfg(any(windows, target_os = "linux"))]
 #[tokio::test]
 async fn offline_zero_egress_socket_audit_during_mcp_execution() {
     let ws = workspace_tempdir("adv-zero-egress-");
     fs::write(ws.path().join("doc.txt"), "offline local verification\n").expect("write doc");
 
-    let self_pid = std::process::id();
     let engine =
         Arc::new(ContextEngine::open_workspace(ws.path(), Some("offline-s1")).expect("open"));
     let (mut client_wr, server_rd) = tokio::io::duplex(64 * 1024);
@@ -1084,7 +1086,23 @@ async fn offline_zero_egress_socket_audit_during_mcp_execution() {
     .await;
     let _ = recv_rpc(&mut client_rd).await;
 
-    // Query Windows TCP/UDP tables for our active process PID
+    // Count IPv4 and IPv6 TCP/UDP endpoints owned by this process.
+    #[cfg(windows)]
+    let total_sockets = windows_network_socket_count().await;
+    #[cfg(target_os = "linux")]
+    let total_sockets = linux_network_socket_count();
+    assert_eq!(
+        total_sockets, 0,
+        "ContextEngine opened unexpected network socket(s): count={total_sockets}"
+    );
+
+    drop(client_wr);
+    srv_task.await.expect("join");
+}
+
+#[cfg(windows)]
+async fn windows_network_socket_count() -> usize {
+    let self_pid = std::process::id();
     let ps_cmd = format!(
         "$tcp = @(Get-NetTCPConnection -OwningProcess {self_pid} -ErrorAction SilentlyContinue); \
          $udp = @(Get-NetUDPEndpoint -OwningProcess {self_pid} -ErrorAction SilentlyContinue); \
@@ -1096,15 +1114,47 @@ async fn offline_zero_egress_socket_audit_during_mcp_execution() {
         .await
         .expect("run PowerShell socket audit");
     assert!(audit.status.success());
-    let total_sockets: usize = String::from_utf8_lossy(&audit.stdout)
+    String::from_utf8_lossy(&audit.stdout)
         .trim()
         .parse()
-        .expect("parse socket count");
-    assert_eq!(
-        total_sockets, 0,
-        "ContextEngine opened unexpected network socket(s): count={total_sockets}"
-    );
+        .expect("parse socket count")
+}
 
-    drop(client_wr);
-    srv_task.await.expect("join");
+#[cfg(target_os = "linux")]
+fn linux_network_socket_count() -> usize {
+    use std::collections::HashSet;
+    use std::io::ErrorKind;
+
+    let mut socket_inodes = HashSet::new();
+    for entry in fs::read_dir("/proc/self/fd").expect("list process file descriptors") {
+        let fd = entry.expect("read process file descriptor");
+        let target = match fs::read_link(fd.path()) {
+            Ok(target) => target,
+            Err(err) if err.kind() == ErrorKind::NotFound => continue, // Closed by another test.
+            Err(err) => panic!("read process file descriptor link: {err}"),
+        };
+        if let Some(inode) = target
+            .to_str()
+            .and_then(|path| path.strip_prefix("socket:["))
+            .and_then(|path| path.strip_suffix(']'))
+        {
+            socket_inodes.insert(inode.to_owned());
+        }
+    }
+
+    let mut count = 0;
+    // The procfs network tables contain the whole namespace. Match their socket
+    // inode column against the sockets held by this process.
+    for table in ["tcp", "tcp6", "udp", "udp6"] {
+        let rows = match fs::read_to_string(format!("/proc/self/net/{table}")) {
+            Ok(rows) => rows,
+            Err(err) if table.ends_with('6') && err.kind() == ErrorKind::NotFound => continue,
+            Err(err) => panic!("read procfs {table} socket table: {err}"),
+        };
+        for row in rows.lines().skip(1) {
+            let inode = row.split_whitespace().nth(9).expect("socket inode column");
+            count += usize::from(socket_inodes.contains(inode));
+        }
+    }
+    count
 }

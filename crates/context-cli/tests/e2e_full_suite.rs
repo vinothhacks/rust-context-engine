@@ -18,6 +18,8 @@ use tempfile::{Builder as TempBuilder, TempDir};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
+const PYTHON: &str = if cfg!(windows) { "python" } else { "python3" };
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -100,6 +102,7 @@ async fn recv_content_length_rpc<R: tokio::io::AsyncBufRead + Unpin>(reader: &mu
 }
 
 /// Queries Windows TCP/UDP socket tables for `pid` and asserts zero outbound/network endpoints.
+#[cfg(windows)]
 async fn assert_zero_network_sockets_for_pid(pid: u32) {
     let ps_script = format!(
         "$tcp = @(Get-NetTCPConnection -OwningProcess {pid} -ErrorAction SilentlyContinue); \
@@ -125,6 +128,45 @@ async fn assert_zero_network_sockets_for_pid(pid: u32) {
         socket_count, 0,
         "context-engine PID {pid} must open zero TCP/UDP sockets, observed {socket_count}"
     );
+}
+
+#[cfg(target_os = "linux")]
+async fn assert_zero_network_sockets_for_pid(pid: u32) {
+    // `/proc/<pid>/net` lists the network namespace, so match its TCP/UDP inodes to this PID's FDs.
+    let mut sockets = std::collections::HashSet::new();
+    for table in ["tcp", "tcp6", "udp", "udp6"] {
+        let contents = match tokio::fs::read_to_string(format!("/proc/{pid}/net/{table}")).await {
+            Ok(contents) => contents,
+            Err(err) if table.ends_with('6') && err.kind() == std::io::ErrorKind::NotFound => {
+                continue;
+            }
+            Err(err) => panic!("read process {table} socket table: {err}"),
+        };
+        for row in contents.lines().skip(1) {
+            let inode = row.split_whitespace().nth(9).expect("socket row inode");
+            sockets.insert(format!("socket:[{inode}]"));
+        }
+    }
+
+    let mut descriptors = tokio::fs::read_dir(format!("/proc/{pid}/fd"))
+        .await
+        .expect("read process descriptors");
+    while let Some(descriptor) = descriptors
+        .next_entry()
+        .await
+        .expect("read process descriptor")
+    {
+        match tokio::fs::read_link(descriptor.path()).await {
+            Ok(target) => assert!(
+                !sockets.contains(target.to_string_lossy().as_ref()),
+                "context-engine PID {pid} opened a TCP/UDP socket: {target:?}"
+            ),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                // The process can close a descriptor between read_dir and read_link.
+            }
+            Err(err) => panic!("read process descriptor target: {err}"),
+        }
+    }
 }
 
 fn build_poc_lib_rs(with_bug: bool) -> String {
@@ -256,6 +298,7 @@ async fn dod_poc_live_mcp_stdio_failing_cargo_project_search_get_fix_resume_stat
         .spawn()
         .expect("spawn context-engine mcp subprocess");
 
+    #[cfg(any(windows, target_os = "linux"))]
     let child_pid = child.id().expect("child pid");
     let mut stdin = child.stdin.take().expect("child stdin");
     let stdout = child.stdout.take().expect("child stdout");
@@ -348,6 +391,7 @@ async fn dod_poc_live_mcp_stdio_failing_cargo_project_search_get_fix_resume_stat
     assert!(!doctor.execution_policy.allow_shell);
 
     // Audit zero outbound/inbound TCP/UDP sockets on live `context-engine` PID!
+    #[cfg(any(windows, target_os = "linux"))]
     assert_zero_network_sockets_for_pid(child_pid).await;
 
     // 2. Run failing `cargo test` via `context_run { argv: ["cargo", "test"] }`
@@ -402,6 +446,7 @@ async fn dod_poc_live_mcp_stdio_failing_cargo_project_search_get_fix_resume_stat
         .contains("verifies_packet_checksum_and_increments_marker"));
 
     // Zero-egress check immediately after subprocess execution
+    #[cfg(any(windows, target_os = "linux"))]
     assert_zero_network_sockets_for_pid(child_pid).await;
 
     // 3. `context_search` for the failed assertion string -> ranked hit with artifact_id & LineRange
@@ -900,7 +945,7 @@ async fn live_mcp_subprocess_content_length_framing_and_cli_binary_roundtrip_mat
             "--session",
             "cli-matrix",
             "--",
-            "python",
+            PYTHON,
             "-c",
             "import sys; sys.stdout.write('hello compact banner\\n'); sys.exit(17)",
         ])
@@ -1227,7 +1272,7 @@ await hooks["tool.execute.after"](
 const runEnv = invokeContextEngineRun({{
   binaryPath: bin,
   workspacePath: ws,
-  argv: ["python", "-c", "import sys; sys.stdout.write('opencode-argv-ok\\n'); sys.exit(9)"],
+  argv: [{PYTHON:?}, "-c", "import sys; sys.stdout.write('opencode-argv-ok\\n'); sys.exit(9)"],
   sessionId: "opencode-s1",
 }});
 
@@ -1289,10 +1334,20 @@ console.log(JSON.stringify({{
     assert_eq!(oc_stats.session.command_captures, 1);
 
     // =========================================================================
-    // 4. Cursor Hook (`adapters/cursor/hooks/post-command-capture.ps1` via `powershell`)
+    // 4. Cursor hook with the platform's shell.
     // =========================================================================
     let cursor_ws = workspace_tempdir("cursor-hook-ws-");
-    let cursor_hook = adapters_dir.join("cursor/hooks/post-command-capture.ps1");
+    let cursor_hook = adapters_dir.join("cursor/hooks/post-command-capture");
+    let cursor_hook_command = || {
+        let mut command = adapter_script_command(&cursor_hook);
+        let workspace = cursor_ws.path().to_str().expect("utf8");
+        if cfg!(windows) {
+            command.args(["-BinaryPath", bin, "-WorkspacePath", workspace]);
+        } else {
+            command.args([bin, workspace]);
+        }
+        command
+    };
 
     let cursor_noisy_payload = json!({
         "command": "cargo test --all-targets",
@@ -1300,33 +1355,21 @@ console.log(JSON.stringify({{
         "cwd": cursor_ws.path().to_str().expect("utf8"),
         "conversation_id": "cursor-conv-1"
     });
-    let mut ps_hook = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            cursor_hook.to_str().expect("utf8"),
-            "-BinaryPath",
-            bin,
-            "-WorkspacePath",
-            cursor_ws.path().to_str().expect("utf8"),
-        ])
+    let mut hook = cursor_hook_command()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .expect("spawn cursor hook");
     {
-        let mut s = ps_hook.stdin.take().expect("stdin");
+        let mut s = hook.stdin.take().expect("stdin");
         s.write_all(cursor_noisy_payload.to_string().as_bytes())
             .await
             .expect("write cursor hook stdin");
     }
-    let ps_out = ps_hook.wait_with_output().await.expect("wait cursor hook");
-    assert!(ps_out.status.success());
-    assert_eq!(String::from_utf8_lossy(&ps_out.stdout).trim(), "{}");
+    let hook_out = hook.wait_with_output().await.expect("wait cursor hook");
+    assert!(hook_out.status.success());
+    assert_eq!(String::from_utf8_lossy(&hook_out.stdout).trim(), "{}");
 
     // Feed already-reduced & coexisting optimizer payloads to Cursor hook -> must NOT re-index!
     for skip_text in [&envelope_marker, &headroom_marker, &caveman_marker] {
@@ -1336,31 +1379,19 @@ console.log(JSON.stringify({{
             "cwd": cursor_ws.path().to_str().expect("utf8"),
             "conversation_id": "cursor-conv-1"
         });
-        let mut ps_skip = Command::new("powershell")
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                cursor_hook.to_str().expect("utf8"),
-                "-BinaryPath",
-                bin,
-                "-WorkspacePath",
-                cursor_ws.path().to_str().expect("utf8"),
-            ])
+        let mut skip = cursor_hook_command()
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .expect("spawn cursor skip hook");
         {
-            let mut s = ps_skip.stdin.take().expect("stdin");
+            let mut s = skip.stdin.take().expect("stdin");
             s.write_all(skip_payload.to_string().as_bytes())
                 .await
                 .expect("write");
         }
-        let skip_res = ps_skip.wait_with_output().await.expect("wait");
+        let skip_res = skip.wait_with_output().await.expect("wait");
         assert!(skip_res.status.success());
         assert_eq!(String::from_utf8_lossy(&skip_res.stdout).trim(), "{}");
     }
@@ -1382,66 +1413,47 @@ console.log(JSON.stringify({{
     assert_eq!(cursor_stats.session.document_indexes, 1);
 
     // =========================================================================
-    // 5. Generic Wrapper (`adapters/generic-mcp/wrappers/ce-run.ps1` via `powershell`)
+    // 5. Generic wrapper with the platform's shell.
     // =========================================================================
     let ce_ws = workspace_tempdir("ce-run-wrapper-ws-");
-    let ce_run_ps1 = adapters_dir.join("generic-mcp/wrappers/ce-run.ps1");
+    let ce_run = adapters_dir.join("generic-mcp/wrappers/ce-run");
+    let wrapper_command = || {
+        let mut command = adapter_script_command(&ce_run);
+        command
+            .env("CONTEXT_ENGINE_BIN", bin)
+            .env("CONTEXT_ENGINE_WORKSPACE", ce_ws.path())
+            .env("CONTEXT_ENGINE_SESSION", "ce-run-s1");
+        command
+    };
 
-    let ce_out = Command::new("powershell")
+    let ce_out = wrapper_command()
         .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            ce_run_ps1.to_str().expect("utf8"),
             "--",
-            "python",
+            PYTHON,
             "-c",
             "import sys; sys.stdout.write('ce-run line\\n' * 200); sys.exit(23)",
         ])
-        .env("CONTEXT_ENGINE_BIN", bin)
-        .env(
-            "CONTEXT_ENGINE_WORKSPACE",
-            ce_ws.path().to_str().expect("utf8"),
-        )
-        .env("CONTEXT_ENGINE_SESSION", "ce-run-s1")
         .output()
         .await
-        .expect("run ce-run.ps1");
+        .expect("run ce-run wrapper");
     assert_eq!(
         ce_out.status.code(),
         Some(23),
-        "ce-run.ps1 must preserve child exit code 23; stderr={}",
+        "ce-run wrapper must preserve child exit code 23; stderr={}",
         String::from_utf8_lossy(&ce_out.stderr)
     );
     let ce_stdout = String::from_utf8_lossy(&ce_out.stdout);
     assert!(
         ce_stdout.starts_with("[context-engine:v1 artifact=a_"),
-        "expected compact banner from ce-run.ps1, got: {ce_stdout}"
+        "expected compact banner from ce-run wrapper, got: {ce_stdout}"
     );
 
-    // Recursion guard: calling `ce-run.ps1 <bin> --version` must pass straight through without capturing!
-    let ce_passthrough = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            ce_run_ps1.to_str().expect("utf8"),
-            bin,
-            "--version",
-        ])
-        .env("CONTEXT_ENGINE_BIN", bin)
-        .env(
-            "CONTEXT_ENGINE_WORKSPACE",
-            ce_ws.path().to_str().expect("utf8"),
-        )
-        .env("CONTEXT_ENGINE_SESSION", "ce-run-s1")
+    // Recursion guard: calling `ce-run <bin> --version` must pass through without a capture.
+    let ce_passthrough = wrapper_command()
+        .args([bin, "--version"])
         .output()
         .await
-        .expect("run ce-run.ps1 recursion guard");
+        .expect("run ce-run recursion guard");
     assert!(ce_passthrough.status.success());
     assert!(String::from_utf8_lossy(&ce_passthrough.stdout).contains("context-engine"));
 
@@ -1463,4 +1475,24 @@ console.log(JSON.stringify({{
         ce_stats.session.command_captures, 1,
         "ce-run recursion guard must prevent capturing context-engine itself"
     );
+}
+
+fn adapter_script_command(path: &Path) -> Command {
+    if cfg!(windows) {
+        let mut command = Command::new("powershell");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+            ])
+            .arg(path.with_extension("ps1"));
+        command
+    } else {
+        let mut command = Command::new("sh");
+        command.arg(path.with_extension("sh"));
+        command
+    }
 }

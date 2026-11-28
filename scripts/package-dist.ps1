@@ -398,7 +398,9 @@ Write-Host "==> [3/6] Staging release artifacts & portable integration bundles i
 
 $DistExe = Join-Path $DistDir "context-engine.exe"
 Copy-Item -LiteralPath $BuiltExe -Destination $DistExe -Force
-Copy-Item -LiteralPath (Join-Path $RepoRoot "NOTICE") -Destination (Join-Path $DistDir "NOTICE") -Force
+foreach ($file in @("LICENSE-APACHE", "LICENSE-MIT", "NOTICE")) {
+    Copy-Item -LiteralPath (Join-Path $RepoRoot $file) -Destination $DistDir -Force
+}
 if (Test-Path -LiteralPath (Join-Path $RepoRoot "README.md")) {
     Copy-Item -LiteralPath (Join-Path $RepoRoot "README.md") -Destination (Join-Path $DistDir "README.md") -Force
 }
