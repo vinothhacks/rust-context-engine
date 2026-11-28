@@ -729,7 +729,7 @@ fn parse_context_index_args(
         }
         (Some(p), None) => IndexSource::FilePath(PathBuf::from(p)),
         (None, Some(c)) => {
-            if label.as_deref().map_or(true, |l| l.trim().is_empty()) {
+            if label.as_deref().is_none_or(|l| l.trim().is_empty()) {
                 return Err(InvalidToolParams::new(
                     TOOL_CONTEXT_INDEX,
                     "property 'label' is required when indexing inline 'content'",
