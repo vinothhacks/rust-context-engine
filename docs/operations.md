@@ -1,61 +1,77 @@
-# Rust Context Engine V1 — Operations, Diagnostics & Maintenance Runbook
+# Rust Context Engine operations
 
-**Version:** `0.1.0`  
-**Artifact Bundle:** `./dist/` (portable single-binary layout)  
-**Target OS:** Windows 10/11 (`x86_64-pc-windows-msvc`) and POSIX (`Linux` / `macOS`)
+## 1. Installation and first use
 
----
+The release workflow targets Linux x86-64 GNU on Ubuntu 22.04. PR CI tests the Linux archive and a Windows x64 release binary. An extracted local Windows x64 GNU candidate ZIP passed startup, stdio MCP, and byte recovery on Windows build 26300. Published clean-install evidence is pending for both platforms. macOS and ARM are outside the verified platform scope.
 
-## 1. Portable Deployment (`dist/`)
+### 1.1 Verify a Linux release archive
 
-### 1.1 Building or Rebuilding the Release Bundle
+Once a release is published, download the Linux `.tar.gz` and `SHA256SUMS` from that exact release and put both files in the same directory. Replace `v0.1.0` with the version you downloaded. Proceed to extraction only after the checksum command reports the archive as `OK`. [GitHub Releases](https://github.com/vinothhacks/rust-context-engine/releases)
 
-Run the non-destructive packaging script from PowerShell 5.1 or PowerShell 7+:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-dist.ps1
+```sh
+name=context-engine-v0.1.0-x86_64-unknown-linux-gnu
+sha256sum --check --strict SHA256SUMS &&
+  tar -xzf "$name.tar.gz" &&
+  "./$name/context-engine" --version
 ```
 
-`scripts/package-dist.ps1` performs six deterministic stages without using any recursive delete commands:
-1. Audits all 162 resolved crates in `cargo metadata --format-version 1 --locked` + `Cargo.lock` for permissive SPDX compliance and writes `dist/sbom.cdx.json` (CycloneDX 1.5) and `dist/license-audit.json`.
-2. Compiles `context-engine.exe` with `--release --locked --target-dir target/wave4-release` (automatically using `cargo auditable build` if `cargo-auditable` is installed on `PATH`).
-3. Copies `context-engine.exe`, `NOTICE`, and `README.md` into `dist/` and renders all 5 client integration kits into `dist/integrations/` (`cursor`, `claude-code`, `opencode`, `codex`, `generic`).
-4. Runs `dist\context-engine.exe doctor --workspace <repo> --json` -> `dist/doctor-report.json`.
-5. Executes the PE32+ header, CFG/CET/ASLR/DEP, debug exposure, string, and `icacls` audit -> `dist/pe-hardening-audit.json`.
-6. Generates `dist/SHA256SUMS.txt` across all 52 artifacts in `dist/`.
+Keep the extracted binary in a stable tools directory. Point the MCP client at the absolute binary path and use a separate, existing workspace directory.
 
-### 1.2 Verifying Artifact Checksums Before Rollout
+### 1.2 Build from source
+
+Install the current stable Rust toolchain and a native C compiler. On Windows x64, use the MSVC toolchain and Visual Studio C++ Build Tools.
+
+```sh
+cargo build --locked --release -p context-cli
+```
+
+With the default Cargo target directory, the result is `target/release/context-engine` on Linux or `target\release\context-engine.exe` on Windows. For version `0.1.0`, `--version` should print `context-engine 0.1.0`.
+
+Windows maintainers can run `scripts\package-dist.ps1` with PowerShell, Python 3.11 or later, and the MSVC toolchain to produce a local development bundle, SBOM, and PE diagnostics. The script emits a local `dist\SHA256SUMS.txt` file. The Linux release uses `SHA256SUMS` and checksums the compressed archive.
+
+### 1.3 Check stdio and recover a fixture
+
+Use a disposable workspace. An MCP client sends `initialize`, receives the negotiated protocol version and `serverInfo`, sends `notifications/initialized`, then requests `tools/list`. With a `2025-06-18` request, expect `2025-06-18` in the reply, `context-engine` and the binary version in `serverInfo`, and the seven `context_*` tools. The server exits successfully when the client closes stdin. [MCP client configuration](../README.md#connect-an-mcp-client-over-stdio)
+
+From a source checkout, run `python3 scripts/verify-binary.py /absolute/path/to/context-engine` on Linux or `python scripts\verify-binary.py C:\tools\context-engine.exe` on Windows. The script starts the selected binary in a disposable workspace and checks startup, MCP negotiation, and byte recovery. Use the path to the extracted binary to exercise an archive.
+
+The following Windows PowerShell example indexes a synthetic CRLF fixture and verifies the recovered bytes. Set `$engine` to the absolute path of the binary you want to check.
 
 ```powershell
-Push-Location .\dist
-Get-Content .\SHA256SUMS.txt | ForEach-Object {
-    $parts = $_ -split '  ', 2
-    $actual = (Get-FileHash -LiteralPath $parts[1] -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actual -ne $parts[0]) { throw "SHA-256 mismatch on $($parts[1])!" }
+$engine = 'C:\tools\context-engine.exe'
+$workspace = New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) "context-engine-$([guid]::NewGuid())")
+$fixture = Join-Path $workspace.FullName 'fixture.log'
+$recovered = Join-Path $workspace.FullName 'recovered.log'
+$contents = [Text.Encoding]::UTF8.GetBytes("first line`r`nsecond line`r`n")
+[IO.File]::WriteAllBytes($fixture, $contents)
+
+$indexed = & $engine index $fixture --workspace $workspace.FullName --json
+if ($LASTEXITCODE -ne 0) { throw 'Index failed' }
+$artifact = $indexed | ConvertFrom-Json
+$retrieved = & $engine get $artifact.artifact_id --workspace $workspace.FullName --stream document --bytes "0:$($contents.Length)" --json
+if ($LASTEXITCODE -ne 0) { throw 'Recovery failed' }
+$page = $retrieved | ConvertFrom-Json
+[IO.File]::WriteAllBytes($recovered, [Convert]::FromBase64String($page.base64_bytes))
+
+if ((Get-FileHash $fixture -Algorithm SHA256).Hash -ne (Get-FileHash $recovered -Algorithm SHA256).Hash) {
+    throw 'Recovered SHA-256 does not match fixture'
 }
-Write-Host "All dist/ SHA-256 checksums verified." -ForegroundColor Green
-Pop-Location
+'SHA-256 matched'
 ```
 
-### 1.3 Installing into a Target Project (Opt-In Only)
+For larger artifacts, request half-open byte ranges in pages and concatenate the decoded `base64_bytes`. The default limit is 32,768 bytes per request. Check `exact_raw_preserved` and capture completion when comparing against the original. Redaction, truncation, and retention can change which bytes are available. [API contract](api-contract.md)
 
-1. Place `dist/context-engine.exe` (and `dist/NOTICE`) in a stable local tools folder (e.g., `D:\tools\context-engine\context-engine.exe`) or use `dist\context-engine.exe` directly in place.
-2. Always preview with `--dry-run` (default) before writing project files:
-   ```powershell
-   D:\tools\context-engine\context-engine.exe setup `
-     --client cursor `
-     --workspace "D:\projects\my-service" `
-     --binary "D:\tools\context-engine\context-engine.exe" `
-     --dry-run
-   ```
-3. Opt in for that workspace by passing `--write-project`:
-   ```powershell
-   D:\tools\context-engine\context-engine.exe setup `
-     --client cursor `
-     --workspace "D:\projects\my-service" `
-     --binary "D:\tools\context-engine\context-engine.exe" `
-     --write-project
-   ```
+### 1.4 Configure a project
+
+Preview with `--dry-run`. Use `--write-project` after approving the previewed changes.
+
+```powershell
+& $engine setup --client cursor --workspace 'D:\projects\my-service' --binary $engine --dry-run
+```
+
+### 1.5 Dependency checks
+
+CI builds and tests against the committed lockfile. A pinned `cargo audit` or `cargo deny` CI check remains a follow-up.
 
 ---
 
@@ -64,7 +80,7 @@ Pop-Location
 Run `doctor` via CLI or invoke the `context_doctor` MCP tool inside your coding agent:
 
 ```powershell
-.\dist\context-engine.exe doctor --workspace "D:\projects\my-service" --json
+& $engine doctor --workspace "D:\projects\my-service" --json
 ```
 
 ### Interpreting `DoctorReport`
@@ -83,7 +99,7 @@ Run `doctor` via CLI or invoke the `context_doctor` MCP tool inside your coding 
 ### Monitoring Token Savings & Security Denials
 
 ```powershell
-.\dist\context-engine.exe stats --workspace "D:\projects\my-service" --all-sessions --json
+& $engine stats --workspace "D:\projects\my-service" --all-sessions --json
 ```
 
 Track:
@@ -115,10 +131,10 @@ Enforce default retention (`14` days TTL, `512 MiB` ceiling) or tighten limits o
 
 ```powershell
 # Enforce default 14-day TTL and 512 MiB store cap:
-.\dist\context-engine.exe prune --workspace "D:\projects\my-service" --json
+& $engine prune --workspace "D:\projects\my-service" --json
 
 # Tighten to 48-hour TTL and 128 MiB store cap:
-.\dist\context-engine.exe prune --workspace "D:\projects\my-service" --ttl-secs 172800 --max-bytes 134217728 --json
+& $engine prune --workspace "D:\projects\my-service" --ttl-secs 172800 --max-bytes 134217728 --json
 ```
 
 ### 3.2 Safe Backup & Restore
@@ -128,9 +144,9 @@ Enforce default retention (`14` days TTL, `512 MiB` ceiling) or tighten limits o
 
 ### 3.3 Binary Upgrades
 
-1. Build or unpack the new `context-engine.exe` and verify `SHA256SUMS.txt`.
+1. Verify the release archive against its matching `SHA256SUMS` before unpacking it, or build the new binary from source.
 2. Stop running IDE MCP server instances (or reload MCP servers in Cursor / Claude Code / OpenCode / Codex).
-3. Replace `context-engine.exe` atomically. On startup, `SearchIndex` and `SessionJournal` inspect the `schema_migrations (component, version)` table inside `index.db` and apply any forward schema migrations inside an `IMMEDIATE` transaction.
+3. Replace the binary at the configured path. On startup, `SearchIndex` and `SessionJournal` inspect the `schema_migrations (component, version)` table inside `index.db` and apply any forward schema migrations inside an `IMMEDIATE` transaction.
 4. Run `context-engine doctor --workspace <path>` to confirm `healthy: true`.
 
 ---
@@ -155,7 +171,7 @@ If copying a workspace across filesystems restored inherited `BUILTIN\Users` ACE
 
 ```powershell
 icacls "D:\projects\my-service\.context-engine\store" /inheritance:r /grant:r "$($env:USERNAME):(OI)(CI)F"
-.\dist\context-engine.exe doctor --workspace "D:\projects\my-service"
+& $engine doctor --workspace "D:\projects\my-service"
 ```
 
 ### 4.3 `user-rea` Development MCP Reports `"REA could not start"`
@@ -170,10 +186,10 @@ During development-time binary hardening audits (never required for `context-eng
    npx rea-agents@6.10.1 doctor
    ```
 3. Verify Node.js (`v24+`) and `PATH` inheritance in your desktop IDE, then **restart the MCP client** (or reload the `user-rea` server in Cursor Settings -> MCP).
-4. Once `user-rea` reports healthy, run read-only verification against `dist/context-engine.exe`:
-   - `inspect_binary_hardening` (`path: "D:\\research 1\\mcp\\token reducer\\dist\\context-engine.exe"`)
-   - `inspect_rust_binary` (`path: "D:\\research 1\\mcp\\token reducer\\dist\\context-engine.exe"`)
-   - `audit_release_exposure` (`path: "D:\\research 1\\mcp\\token reducer\\dist\\context-engine.exe"`)
+4. Once `user-rea` reports healthy, run read-only verification against the selected binary.
+   - `inspect_binary_hardening` (`path: "C:\\tools\\context-engine.exe"`)
+   - `inspect_rust_binary` (`path: "C:\\tools\\context-engine.exe"`)
+   - `audit_release_exposure` (`path: "C:\\tools\\context-engine.exe"`)
 5. When `user-rea` is offline, `scripts/package-dist.ps1` provides deterministic offline verification via `dist/pe-hardening-audit.json`.
 
 ---

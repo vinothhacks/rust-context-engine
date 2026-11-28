@@ -1,10 +1,47 @@
 # Rust Context Engine (`context-engine`)
 
-A self-hosted, single-binary **Rust context-optimization engine** (`CLI` + workspace-scoped `stdio` MCP server) that captures noisy build, test, compiler, Git, search, JSON, and log outputs once, returns deterministic compact summaries (`ArtifactEnvelope` v1), indexes secret-redacted chunks into per-workspace SQLite WAL + FTS5, and serves byte-exact or line-paginated original slices on demand without re-running commands.
+A self-hosted Rust CLI and workspace-scoped stdio MCP server. `context-engine` captures build, test, Git, search, and log output, returns compact summaries, and indexes secret-redacted text in SQLite FTS5. It can recover stored byte ranges or show line pages without rerunning the original command.
 
-- **100% Local & Zero Network Egress:** Pure native Rust (`#![forbid(unsafe_code)]` across all workspace crates). No LLM summarizers, no cloud proxies, no vector APIs, and zero runtime dependencies on Node.js or Python.
-- **Zero Interference with Global Setups:** Never modifies `~/.cursor`, `~/.claude`, `~/.codex`, `~/.config/opencode`, or `%APPDATA%`. Coexists cleanly alongside `headroom` and `caveman` via explicit single-pass transformation ledgers (`view.transformations`).
-- **Byte-Exact Recoverability:** Separate `stdout` and `stderr` content-addressed `zstd` blobs verified by SHA-256, recoverable by 1-indexed `--lines start:end` or binary-safe `--bytes start:end`.
+The native binary uses local stdio. Optional agent hooks may need additional runtimes, and commands launched through the capture tool run with local process permissions. Byte-exact recovery applies to retained, complete streams whose original bytes were preserved. Capture limits, secret redaction, quarantine, and pruning can affect what is recoverable.
+
+## Install and start
+
+The portable release workflow targets Linux x86-64 GNU. PR CI runs the archive checks on Ubuntu 22.04 and the release binary checks on Windows x64. An extracted local Windows x64 GNU candidate ZIP passed startup, stdio MCP, and byte recovery on Windows build 26300. Published clean-install verification is pending for both platforms. macOS and ARM are outside the verified platform scope.
+
+For a source build, use current stable Rust with Cargo and a native C toolchain. On Windows x64, use the MSVC toolchain and Visual Studio C++ Build Tools. Build from the repository root.
+
+```sh
+cargo build --locked --release -p context-cli
+```
+
+The default build outputs are `target/release/context-engine` on Linux and `target\release\context-engine.exe` on Windows. Run the binary with `--version` as a read-only first check. For version `0.1.0`, the expected output is `context-engine 0.1.0`.
+
+When a Linux release is published, download the `.tar.gz` archive and its `SHA256SUMS` from the same release and verify the archive before extracting it. The runbook has the exact commands and a fixture recovery check. [GitHub Releases](https://github.com/vinothhacks/rust-context-engine/releases) · [Operations runbook](docs/operations.md#1-installation-and-first-use)
+
+## Connect an MCP client over stdio
+
+Use an absolute binary path and an absolute path to a disposable workspace for the first connection. This example uses a client’s project configuration with `mcpServers`.
+
+```json
+{
+  "mcpServers": {
+    "context-engine": {
+      "command": "/home/me/tools/context-engine",
+      "args": ["mcp", "--workspace", "/home/me/projects/test-workspace"]
+    }
+  }
+}
+```
+
+For Codex, use the project’s `.codex/config.toml`.
+
+```toml
+[mcp_servers.context_engine]
+command = 'C:\tools\context-engine.exe'
+args = ['mcp', '--workspace', 'C:\projects\test-workspace']
+```
+
+Confirm the MCP client lists `context_run`, `context_index`, `context_search`, `context_get`, `context_resume`, `context_stats`, and `context_doctor`. Starting the server opens workspace-local state in `.context-engine/`.
 
 ---
 
@@ -50,7 +87,7 @@ flowchart LR
 | `context-execution` | Direct `argv` execution gate (no shell by default), 18-tool dev allowlist, destructive flag denylist, env var scrubbing, symlink/NTFS junction escape rejection, and post-open TOCTOU file checks. |
 | `context-capture` | Concurrent bounded `stdout`/`stderr` streaming (`16 MiB` default per stream), deadline timeouts, `kill_on_drop(true)`, and cooperative MCP cancellation. |
 | `context-store` | Crash-safe atomic `zstd` blob persistence (`blobs/<2-hex>/<sha256>.zst`), scoped manifests, owner-only Windows `icacls` DACLs / Unix `0700` permissions, and TTL + LRU byte-quota pruning. |
-| `context-reducers` | Deterministic single-pass reducers: `strip_ansi@1`, `cargo_test@1`, `pytest_jest@1`, `compiler_diag@1`, `git_reducer@1`, `structured_json@1` (differentially verified on 1,180 recorded + 2,748 fuzz cases with `0` mismatches and `6.94x` speedup), `log_dedup@1`, `search_hits@1`, and `unknown_safe@1`. |
+| `context-reducers` | Deterministic single-pass reducers: `strip_ansi@1`, `cargo_test@1`, `pytest_jest@1`, `compiler_diag@1`, `git_reducer@1`, `structured_json@1`, `log_dedup@1`, `search_hits@1`, and `unknown_safe@1`. |
 | `context-search` | Per-workspace SQLite WAL + FTS5 (`porter unicode61`, `bm25()`) over sanitized line-addressed chunks with defense-in-depth post-redaction assertions. |
 | `context-journal` | Append-only session event ledger, deterministic `context_resume` checkpoints (`ResumePack`), and honest net token/byte accounting (`exposed = view + retrieved`). |
 | `context-mcp` | Workspace-scoped MCP JSON-RPC 2.0 server supporting both newline-delimited stdio and auto-detected `Content-Length` framing across all 7 `context_*` tools. |
@@ -58,51 +95,22 @@ flowchart LR
 
 ---
 
-## Measured V1 Benchmark Results & Guarantees
+## Opt-in agent integrations
 
-Verified across `86/86` workspace unit, golden, property, E2E stdio MCP, and adversarial security tests plus `23` evaluation fixtures and `20` paired end-to-end debugging tasks ([`evals/reports/v1-benchmark-metrics.json`](evals/reports/v1-benchmark-metrics.json) — **`7/7` V1 acceptance gates passed**):
-
-| Dimension | V1 Acceptance Bar | Measured V1 Result |
-| :--- | :--- | :--- |
-| **Exact Byte Recovery** | `100%` SHA-256 match on authorized fixtures | **`100.0%` (`22 / 22`)** byte-for-byte SHA-256 verified across UTF-8, CRLF, ANSI, and binary streams |
-| **Failure Evidence Retention** | `100%` of distinct failure IDs & exit codes | **`100.0%` (`24 / 24` failure IDs, `13 / 13` exit codes)** preserved in compact views |
-| **Noisy Output Reduction** | `>= 40.0%` median byte reduction | **`77.69%` median** (`74.49%` across all 23 fixtures; up to **`99.95%`** on 5,000-line `cargo test`) |
-| **Paired Net Token Savings** | `>= 25.0%` median net reduction (incl. retrieval) | **`58.91%` median** / **`93.84%` aggregate** (`145,528` -> `8,964` tokens across `20 / 20` tasks incl. `16` retrievals) |
-| **Task Effectiveness** | Non-inferior vs uncached baseline (`20 / 20`) | **`20 / 20` (`100%`)** engine task completions vs `20 / 20` baseline (`0` regressions) |
-| **Latency & Footprint** | Responsive local `stdio` MCP execution | **`5.34 ms` p50** (`36.04 ms` p95) in-engine MCP tool latency; `20.93 MiB` peak working set |
-| **Zero Egress & Secret Isolation** | `0` cross-scope leaks & `0` network sockets | **`0` cross-workspace leaks**, **`0` outbound network sockets**, `0` unredacted secrets in views/FTS5/manifests |
-| **Hardened Binary & Supply Chain** | Stripped + CFG/ASLR/DEP/CET + permissive deps | PE32+ `0xc160` (`HIGH_ENTROPY_VA`, `DYNAMIC_BASE`, `NX_COMPAT`, `GUARD_CF`) + `CET_COMPAT`; **`162 / 162` permissive crates** (`0` GPL/AGPL/Elastic-2.0/BUSL-1.1) |
-
----
-
-## Quick Start (Build & Portable `dist/` Bundle)
-
-Build the hardened release binary, CycloneDX 1.5 SBOM, portable integration kits, health report, and `SHA256SUMS.txt` into `./dist/`:
+`context-engine setup` defaults to `--dry-run`. Preview the rendered files before opting in with `--write-project`. The examples use a binary kept at `C:\tools\context-engine.exe` and a project at `D:\path\to\project`.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-dist.ps1
+$engine = 'C:\tools\context-engine.exe'
 ```
-
-Verify workspace health at any time:
-
-```powershell
-.\dist\context-engine.exe doctor --workspace "D:\path\to\your-project"
-```
-
----
-
-## 1-Command Opt-In Agent Integrations
-
-`context-engine setup` **defaults safely to `--dry-run`**. It never touches `~/.cursor`, `~/.claude`, `~/.codex`, or `~/.config/opencode`—in fact, passing any global user config directory fails closed with `SCOPE_VIOLATION` (`exit 77`). When `--write-project` is explicitly passed on a target repo, existing unrelated `mcpServers` entries are preserved via lossless JSON/TOML merging.
 
 ### 1. Claude Code
 
 ```powershell
 # Preview rendered .mcp.json, SKILL.md, and optional PostToolUse hook (writes 0 files):
-.\dist\context-engine.exe setup --client claude-code --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --dry-run
+& $engine setup --client claude-code --workspace "D:\path\to\project" --binary $engine --dry-run
 
 # Opt in for a single project workspace:
-.\dist\context-engine.exe setup --client claude-code --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --write-project
+& $engine setup --client claude-code --workspace "D:\path\to\project" --binary $engine --write-project
 ```
 
 - Installs project-local `.mcp.json`, `.claude/skills/context-engine/SKILL.md`, `.claude/context-engine.CLAUDE.snippet.md`, and optional Node 24 `.claude/hooks/post-tool-reduce.mjs`.
@@ -111,10 +119,10 @@ Verify workspace health at any time:
 
 ```powershell
 # Preview first:
-.\dist\context-engine.exe setup --client cursor --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --dry-run
+& $engine setup --client cursor --workspace "D:\path\to\project" --binary $engine --dry-run
 
 # Opt in for a single project workspace:
-.\dist\context-engine.exe setup --client cursor --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --write-project
+& $engine setup --client cursor --workspace "D:\path\to\project" --binary $engine --write-project
 ```
 
 - Merges `"context-engine"` into `<project>/.cursor/mcp.json` and writes `<project>/.cursor/rules/context-engine.mdc` (plus optional `afterShellExecution` capture hooks).
@@ -122,7 +130,7 @@ Verify workspace health at any time:
 ### 3. OpenCode
 
 ```powershell
-.\dist\context-engine.exe setup --client opencode --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --write-project
+& $engine setup --client opencode --workspace "D:\path\to\project" --binary $engine --write-project
 ```
 
 - Merges MCP registration, tool permissions, and `.opencode/plugin/context-engine-plugin.mjs` into `<project>/opencode.json`.
@@ -130,7 +138,7 @@ Verify workspace health at any time:
 ### 4. OpenAI Codex CLI
 
 ```powershell
-.\dist\context-engine.exe setup --client codex --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --write-project
+& $engine setup --client codex --workspace "D:\path\to\project" --binary $engine --write-project
 ```
 
 - Merges `[mcp_servers.context_engine]` into `<project>/.codex/config.toml` and emits `.codex/context-engine.AGENTS.snippet.md`.
@@ -138,7 +146,7 @@ Verify workspace health at any time:
 ### 5. Windsurf, Cline, Roo Code, Continue & Zed (`generic-mcp`)
 
 ```powershell
-.\dist\context-engine.exe setup --client windsurf --workspace "D:\path\to\project" --binary "D:\research 1\mcp\token reducer\dist\context-engine.exe" --write-project
+& $engine setup --client windsurf --workspace "D:\path\to\project" --binary $engine --write-project
 ```
 
 - Renders `<project>/.mcp.stdio.json` (also compatible with `--client cline`, `--client continue`, `--client roo-code`, `--client zed`, or `--client generic`) alongside `ce-run` CLI wrappers.
@@ -149,16 +157,16 @@ Agents without MCP support (Aider, SWE-agent, custom CLI loops, CI scripts) can 
 
 ```powershell
 # Windows PowerShell (preserves exact child exit code)
-.\.context-engine\bin\ce-run.ps1 cargo test --workspace
+.\.context-engine\bin\ce-run.ps1 cargo test --locked --workspace
 .\.context-engine\bin\ce-run.ps1 git diff
 
-# Search FTS5 and recover exact lines without re-running cargo test:
-.\dist\context-engine.exe search "assertion failed" --workspace .
-.\dist\context-engine.exe get <artifact_id> --workspace . --stream stdout --lines 1:80
+# Search and read stored lines without rerunning cargo test.
+& $engine search "assertion failed" --workspace .
+& $engine get 'ARTIFACT_ID' --workspace . --stream stdout --lines 1:80
 ```
 
 ```sh
-# Linux / macOS / WSL POSIX sh
+# POSIX shell wrapper
 ./.context-engine/bin/ce-run.sh pytest -q
 ```
 
@@ -182,3 +190,8 @@ Agents without MCP support (Aider, SWE-agent, custom CLI loops, CI scripts) can 
 - **[Operations Runbook (`docs/operations.md`)](docs/operations.md):** Portable deployment, `doctor` diagnostics, `prune`/backup/upgrade procedures, rollback switches, and REA MCP (`npx rea-agents@6.10.1 doctor`) troubleshooting.
 - **[Threat Model (`docs/threat-model.md`)](docs/threat-model.md) & [ADRs (`docs/adrs/`)](docs/adrs/):** STRIDE analysis and architectural decision records (`0001`–`0004`).
 - **[Provenance & Licenses (`research/provenance-and-licenses.md`)](research/provenance-and-licenses.md) & [`NOTICE`](NOTICE):** Upstream Apache-2.0 / MIT attributions and clean-room `Elastic-2.0` exclusion record.
+- **Historical V1 evaluations** document the fixtures and measurements from the original development run. [Benchmark report](evals/reports/v1-benchmark-report.md)
+
+## License
+
+Apache-2.0 or MIT, at your option. [Apache-2.0](LICENSE-APACHE) · [MIT](LICENSE-MIT) · [NOTICE](NOTICE)
