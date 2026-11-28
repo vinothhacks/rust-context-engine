@@ -9,7 +9,7 @@ authors.workspace = true
 
 [dependencies]
 base64.workspace = true
-chrono.workspace = true
+jiff.workspace = true
 context-core.workspace = true
 dunce.workspace = true
 hex.workspace = true

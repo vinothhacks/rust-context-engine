@@ -8,7 +8,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-chrono.workspace = true
+jiff.workspace = true
 dunce.workspace = true
 hex.workspace = true
 regex.workspace = true

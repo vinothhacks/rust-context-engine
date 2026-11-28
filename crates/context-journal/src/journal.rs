@@ -4,13 +4,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use chrono::Utc;
 use context_core::{
     now_rfc3339_utc, sha256_hex, truncate_str_utf8_boundary, ArtifactEnvelope, ArtifactId,
     ArtifactSource, BoundScope, ContextError, RecoveryHandle, ReductionBudget, Result, SecretGuard,
     SessionId, StreamKind, WorkspaceScopeId, TRANSFORM_CARGO_TEST_V1, TRANSFORM_COMPILER_DIAG_V1,
     TRANSFORM_PYTEST_JEST_V1, TRANSFORM_SECRET_REDACT_V1, TRANSFORM_STRIP_ANSI_V1,
 };
+use jiff::Timestamp;
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 
 use crate::model::{
@@ -146,7 +146,7 @@ impl SessionJournal {
 
         let sanitized = self.sanitize_input(input)?;
         let recorded_at = now_rfc3339_utc();
-        let recorded_unix_ms = Utc::now().timestamp_millis();
+        let recorded_unix_ms = Timestamp::now().as_millisecond();
 
         let mut conn = self.lock_conn()?;
         let event_seq = with_lock_retry("failed to append journal event", || {
@@ -312,7 +312,7 @@ impl SessionJournal {
         });
 
         let created_at = now_rfc3339_utc();
-        let created_unix_ms = Utc::now().timestamp_millis();
+        let created_unix_ms = Timestamp::now().as_millisecond();
 
         let cp_event = self.sanitize_input(JournalEventInput {
             source_label: sanitized_note.clone(),
@@ -556,7 +556,7 @@ impl SessionJournal {
         caller_scope: &BoundScope,
         ttl_secs: u64,
     ) -> Result<JournalPruneReport> {
-        let now_ms = Utc::now().timestamp_millis();
+        let now_ms = Timestamp::now().as_millisecond();
         let ttl_ms = i64::try_from(ttl_secs.saturating_mul(1_000)).unwrap_or(i64::MAX);
         let cutoff_unix_ms = now_ms.saturating_sub(ttl_ms);
         self.prune_before_unix_ms(caller_scope, cutoff_unix_ms)

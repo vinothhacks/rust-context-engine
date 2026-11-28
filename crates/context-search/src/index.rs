@@ -4,12 +4,12 @@ use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use chrono::Utc;
 use context_core::{
     now_rfc3339_utc, truncate_str_utf8_boundary, ArtifactEnvelope, ArtifactId, ArtifactSource,
     BoundScope, ContextError, LineRange, RecoveryHandle, ReductionBudget, Result, SecretGuard,
     SecretPolicyMode, SessionId, StreamKind, WorkspaceScopeId,
 };
+use jiff::Timestamp;
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 
@@ -373,7 +373,7 @@ impl SearchIndex {
         }
 
         let indexed_at = now_rfc3339_utc();
-        let indexed_unix_ms = Utc::now().timestamp_millis();
+        let indexed_unix_ms = Timestamp::now().as_millisecond();
 
         let mut conn = self.lock_conn()?;
         let (total_chunks_after, total_bytes_after) =
@@ -842,7 +842,7 @@ impl SearchIndex {
 
     /// Prunes artifacts in `caller_scope.workspace_scope_id` older than `ttl_secs` relative to current UTC time.
     pub fn prune_expired(&self, caller_scope: &BoundScope, ttl_secs: u64) -> Result<PruneReport> {
-        let now_ms = Utc::now().timestamp_millis();
+        let now_ms = Timestamp::now().as_millisecond();
         let ttl_ms = i64::try_from(ttl_secs.saturating_mul(1_000)).unwrap_or(i64::MAX);
         let cutoff_unix_ms = now_ms.saturating_sub(ttl_ms);
         self.prune_before_unix_ms(caller_scope, cutoff_unix_ms)

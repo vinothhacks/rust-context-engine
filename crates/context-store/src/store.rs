@@ -11,13 +11,13 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine as _;
-use chrono::Utc;
 use context_core::{
     sha256_hex, truncate_str_utf8_boundary, ArtifactEnvelope, ArtifactId, ArtifactSource,
     ArtifactView, BoundScope, ByteRange, CaptureSummary, ContextError, LineRange, RecoveryHandle,
     ReductionBudget, Result, SecretFinding, SecretGuard, SecretPolicyMode, StreamEncoding,
     StreamKind, ViewKind, EMPTY_SHA256_HEX, TRANSFORM_SECRET_REDACT_V1, TRANSFORM_UNKNOWN_SAFE_V1,
 };
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tempfile::Builder as TempBuilder;
 
@@ -1412,7 +1412,7 @@ fn count_lines_str(s: &str) -> usize {
 
 fn current_unix_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or_else(
-        |_| u64::try_from(Utc::now().timestamp_millis().max(0)).unwrap_or(0),
+        |_| u64::try_from(Timestamp::now().as_millisecond()).unwrap_or(0),
         |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX),
     )
 }

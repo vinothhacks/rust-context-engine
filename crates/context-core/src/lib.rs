@@ -45,6 +45,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn utc_timestamp_uses_millisecond_precision() {
+        let timestamp = now_rfc3339_utc();
+        assert_eq!(timestamp.len(), 24);
+        assert_eq!(timestamp.as_bytes()[19], b'.');
+        assert!(timestamp.ends_with('Z'));
+        assert!(timestamp.parse::<jiff::Timestamp>().is_ok());
+    }
+
+    #[test]
     fn workspace_scope_binding_and_cross_scope_isolation() {
         let ws_a = TempDir::new().expect("tempdir A");
         let ws_b = TempDir::new().expect("tempdir B");
