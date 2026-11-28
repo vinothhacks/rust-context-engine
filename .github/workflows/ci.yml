@@ -33,7 +33,23 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - name: Run Windows workspace tests
         if: runner.os == 'Windows'
-        run: cargo +stable test --locked --workspace
+        env:
+          CARGO_TERM_COLOR: never
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $testLog = New-TemporaryFile
+          try {
+            cargo +stable test --locked --workspace -j 2 --no-fail-fast -- --test-threads=2 2>&1 |
+              Tee-Object -FilePath $testLog.FullName
+            $result = $LASTEXITCODE
+            if ($result -ne 0) {
+              Select-String -LiteralPath $testLog.FullName -Pattern "^test [a-z0-9_:]+ \.\.\. FAILED$|^thread '[a-z0-9_:]+' (\([0-9]+\) )?panicked at [a-z0-9_./\\-]+:[0-9]+:[0-9]+:$|^error\[E[0-9]+\]:" |
+                ForEach-Object { Write-Output ("::error title=Workspace test failure::{0}" -f $_.Matches[0].Value) }
+            }
+          } finally {
+            Remove-Item -LiteralPath $testLog.FullName
+          }
+          exit $result
       - name: Run Linux workspace tests
         if: runner.os == 'Linux'
         shell: bash
